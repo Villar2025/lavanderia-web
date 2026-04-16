@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lavandería | Sistema de control</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <header class="header">
+        <h1>Lavandería</h1>
+        <p></p>
+        <p></p>
+        <p></p>
+      </header>
+
+      <div class="tabs">
+        <button class="tabBtn active" type="button" data-tab="ventasTab">Ventas</button>
+        <button class="tabBtn" type="button" data-tab="verVentasTab">Ver ventas</button>
+        <button class="tabBtn" type="button" data-tab="encargosTab">Encargos</button>
+      </div>
+
+      <main class="card">
+        <!-- ========================= -->
+        <!-- TAB: VENTAS -->
+        <!-- ========================= -->
+        <div id="ventasTab" class="tabContent active">
+          <form id="saleForm" autocomplete="off">
+            <section class="grid">
+              <div class="field">
+                <label for="employee">Empleado</label>
+                <select id="employee" required>
+                  <option value="" selected disabled>Selecciona empleado</option>
+                  <option value="Empleado 1">Empleado 1</option>
+                  <option value="Empleado 2">Empleado 2</option>
+                  <option value="Empleado 3">Empleado 3</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="saleDate">Fecha de venta</label>
+                <input id="saleDate" type="date" required />
+              </div>
+            </section>
+
+            <hr class="sep" />
+
+            <section class="section">
+              <h2>Selecciona productos</h2>
+
+              <details class="block">
+                <summary>Lavadoras y secadoras</summary>
+
+                <div class="row">
+                  <select class="productSelect" data-category="lavadoras_secadoras">
+                    <option value="" selected disabled>Selecciona un servicio</option>
+                    <option value="Lavadora 16 kg" data-price="150">Lavadora 16 kg — $150</option>
+                    <option value="Lavadora 9 kg" data-price="90">Lavadora 9 kg — $90</option>
+                    <option value="Lavadora 4 kg" data-price="70">Lavadora 4 kg — $70</option>
+                    <option value="Secadora 9 kg (15 min)" data-price="35">Secadora 9 kg (15 min) — $35</option>
+                    <option value="Secadora 9 kg (30 min)" data-price="70">Secadora 9 kg (30 min) — $70</option>
+                    <option value="Solo secado 9 kg (15 min)" data-price="40">Solo secado 9 kg (15 min) — $40</option>
+                    <option value="Solo secado 9 kg (30 min)" data-price="80">Solo secado 9 kg (30 min) — $80</option>
+                  </select>
+
+                  <input class="qtyInput" type="number" min="1" value="1" />
+                  <button type="button" class="addBtn">Agregar</button>
+                </div>
+
+                <div class="row">
+                  <label class="inlineLabel" for="customDryPrice">Secado (precio libre)</label>
+                  <input id="customDryPrice" type="number" min="0" step="1" placeholder="Ej. 80" />
+                  <button type="button" id="addCustomDry" class="addBtn secondary">Agregar secado</button>
+                </div>
+              </details>
+
+              <details class="block">
+                <summary>Detergentes</summary>
+
+                <div class="row">
+                  <select class="productSelect" data-category="detergentes">
+                    <option value="" selected disabled>Selecciona un producto</option>
+                    <option value="1 medida de jabón" data-price="10">1 medida de jabón — $10</option>
+                    <option value="1 medida de suavizante" data-price="10">1 medida de suavizante — $10</option>
+                    <option value="1 medida de desmugrante" data-price="15">1 medida de desmugrante — $15</option>
+                  </select>
+
+                  <input class="qtyInput" type="number" min="1" value="1" />
+                  <button type="button" class="addBtn">Agregar</button>
+                </div>
+              </details>
+
+              <details class="block">
+                <summary>Bolsas</summary>
+
+                <div class="row">
+                  <select class="productSelect" data-category="bolsas">
+                    <option value="" selected disabled>Selecciona una bolsa</option>
+                    <option value="Bolsa chica" data-price="5">Bolsa chica — $5</option>
+                    <option value="Bolsa mediana" data-price="6">Bolsa mediana — $6</option>
+                    <option value="Bolsa grande" data-price="7">Bolsa grande — $7</option>
+                  </select>
+
+                  <input class="qtyInput" type="number" min="1" value="1" />
+                  <button type="button" class="addBtn">Agregar</button>
+                </div>
+              </details>
+
+              <details class="block">
+                <summary>Otros (productos sueltos)</summary>
+
+                <div class="row">
+                  <select class="productSelect" data-category="otros">
+                    <option value="" selected disabled>Selecciona un producto</option>
+                    <option value="Suavizante (botella)" data-price="22">Suavizante — $22</option>
+                    <option value="Pinol" data-price="17">Pinol — $17</option>
+                    <option value="Cloro" data-price="10">Cloro — $10</option>
+                    <option value="Jabón en polvo" data-price="18">Jabón en polvo — $18</option>
+                  </select>
+
+                  <input class="qtyInput" type="number" min="1" value="1" />
+                  <button type="button" class="addBtn">Agregar</button>
+                </div>
+              </details>
+            </section>
+
+            <section class="section">
+              <h2>Carrito</h2>
+              <div id="cartEmpty" class="muted">Aún no agregas productos.</div>
+
+              <div class="tableWrap">
+                <table id="cartTable" class="table" aria-label="Carrito de venta">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Categoría</th>
+                      <th>Precio</th>
+                      <th>Cant.</th>
+                      <th>Subtotal</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="cartBody"></tbody>
+                </table>
+              </div>
+
+              <div class="totals">
+                <div class="totalLine">
+                  <span>Total</span>
+                  <strong id="total">$0</strong>
+                </div>
+              </div>
+            </section>
+
+            <hr class="sep" />
+
+            <section class="grid">
+              <div class="field">
+                <label for="cash">Dinero recibido</label>
+                <input id="cash" type="number" min="0" step="1" placeholder="Ej. 200" required />
+              </div>
+
+              <div class="field">
+                <label>Cambio</label>
+                <div class="pill" id="change">$0</div>
+              </div>
+            </section>
+
+            <div class="actions">
+              <button id="saveBtn" type="submit" class="primary">Registrar venta</button>
+              <button id="newBtn" type="button" class="ghost" disabled>Nueva venta</button>
+            </div>
+
+            <p id="status" class="status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+
+        <!-- ========================= -->
+        <!-- TAB: VER VENTAS -->
+        <!-- ========================= -->
+        <div id="verVentasTab" class="tabContent">
+          <section class="section" id="accessSection">
+            <h2>Acceso a ventas</h2>
+
+            <div class="grid">
+              <div class="field">
+                <label for="adminPassword">Contraseña</label>
+                <input type="password" id="adminPassword" placeholder="Ingresa contraseña" />
+              </div>
+
+              <div class="field">
+                <label>&nbsp;</label>
+                <button type="button" id="unlockBtn" class="primary">Desbloquear</button>
+              </div>
+            </div>
+
+            <p id="accessStatus" class="status"></p>
+          </section>
+
+          <section class="section" id="viewSalesSection" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+              <h2 style="margin:0;">Ver ventas</h2>
+            
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" id="deleteAllDataBtn" class="iconBtn" style="width:auto;">
+                  Eliminar datos (conservar pendientes)
+                </button>
+            
+                <button type="button" id="logoutBtn" class="ghost" style="width:auto;">
+                  Cerrar sesión
+                </button>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="field">
+                <label for="fromDate">Desde</label>
+                <input id="fromDate" type="date" />
+              </div>
+
+              <div class="field">
+                <label for="toDate">Hasta</label>
+                <input id="toDate" type="date" />
+              </div>
+
+              <div class="field">
+                <label for="employeeFilter">Empleado</label>
+                <select id="employeeFilter">
+                  <option value="">Todos</option>
+                  <option value="Empleado 1">Empleado 1</option>
+                  <option value="Empleado 2">Empleado 2</option>
+                  <option value="Empleado 3">Empleado 3</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>&nbsp;</label>
+                <button type="button" id="loadSalesBtn" class="primary">Cargar ventas</button>
+              </div>
+            </div>
+
+            <div class="tableWrap" style="margin-top: 12px;">
+              <table class="table" aria-label="Tabla de ventas">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Empleado</th>
+                    <th>Total</th>
+                    <th>Efectivo</th>
+                    <th>Cambio</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="salesBody"></tbody>
+              </table>
+            </div>
+
+            <p id="salesStatus" class="status"></p>
+
+            <div id="salesSummary" class="block" style="margin-top:10px; display:none;">
+              <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div>
+                  <strong>Total ventas:</strong>
+                  <span id="summaryCount">0</span>
+                </div>
+                <div>
+                  <strong>Ingreso total:</strong>
+                  <span id="summaryTotal">$0</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="detailPanel" class="block" style="display:none; margin-top:12px;">
+              <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+                <strong>Detalle de venta</strong>
+                <button type="button" id="closeDetail" class="ghost" style="width:auto;">Cerrar</button>
+              </div>
+
+              <div class="tableWrap" style="margin-top:10px;">
+                <table class="table" aria-label="Detalle de venta">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Categoría</th>
+                      <th>Precio</th>
+                      <th>Cant.</th>
+                      <th>Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody id="detailBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <hr class="sep" />
+
+            <section class="section">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h2 style="margin:0;">Ver encargos</h2>
+              </div>
+
+              <div class="grid">
+                <div class="field">
+                  <label for="viewEncargoFromDate">Desde</label>
+                  <input id="viewEncargoFromDate" type="date" />
+                </div>
+
+                <div class="field">
+                  <label for="viewEncargoToDate">Hasta</label>
+                  <input id="viewEncargoToDate" type="date" />
+                </div>
+
+                <div class="field">
+                  <label for="viewEncargoEmployeeFilter">Empleado</label>
+                  <select id="viewEncargoEmployeeFilter">
+                    <option value="">Todos</option>
+                    <option value="Empleado 1">Empleado 1</option>
+                    <option value="Empleado 2">Empleado 2</option>
+                    <option value="Empleado 3">Empleado 3</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label>&nbsp;</label>
+                  <button type="button" id="loadViewEncargosBtn" class="primary">Cargar encargos</button>
+                </div>
+              </div>
+
+              <div class="tableWrap" style="margin-top: 12px;">
+                <table class="table" aria-label="Tabla de encargos en ver ventas">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Empleado</th>
+                      <th>Cliente</th>
+                      <th>Teléfono</th>
+                      <th>Pedido</th>
+                      <th>Pago</th>
+                      <th>Total</th>
+                      <th>Pagó</th>
+                      <th>Por cobrar</th>
+                      <th>Cambio</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="viewEncargosBody"></tbody>
+                </table>
+              </div>
+
+              <p id="viewEncargosStatus" class="status"></p>
+
+              <div id="viewEncargosSummary" class="block" style="margin-top:10px; display:none;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    <strong>Total encargos:</strong>
+                    <span id="viewEncargosSummaryCount">0</span>
+                  </div>
+                  <div>
+                    <strong>Total vendido:</strong>
+                    <span id="viewEncargosSummaryTotal">$0</span>
+                  </div>
+                  <div>
+                    <strong>Total cobrado:</strong>
+                    <span id="viewEncargosSummaryPaid">$0</span>
+                  </div>
+                  <div>
+                    <strong>Total por cobrar:</strong>
+                    <span id="viewEncargosSummaryDue">$0</span>
+                  </div>
+                  <div>
+                    <strong>Total cambio:</strong>
+                    <span id="viewEncargosSummaryCambio">$0</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="viewEncargoDetailPanel" class="block" style="display:none; margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+                  <strong>Detalle de encargo</strong>
+                  <button type="button" id="closeViewEncargoDetail" class="ghost" style="width:auto;">Cerrar</button>
+                </div>
+
+                <div class="block" style="margin-top:12px;">
+                  <div class="grid">
+                    <div class="pill"><strong>ID:</strong> <span id="viewDetailEncargoId">-</span></div>
+                    <div class="pill"><strong>Fecha:</strong> <span id="viewDetailEncargoFecha">-</span></div>
+                    <div class="pill"><strong>Empleado:</strong> <span id="viewDetailEncargoEmpleado">-</span></div>
+                    <div class="pill"><strong>Cliente:</strong> <span id="viewDetailEncargoCliente">-</span></div>
+                    <div class="pill"><strong>Teléfono:</strong> <span id="viewDetailEncargoTelefono">-</span></div>
+                    <div class="pill"><strong>Total:</strong> <span id="viewDetailEncargoTotal">-</span></div>
+                    <div class="pill"><strong>Pagado:</strong> <span id="viewDetailEncargoPagado">-</span></div>
+                    <div class="pill"><strong>Cambio:</strong> <span id="viewDetailEncargoCambio">-</span></div>
+                    <div class="pill"><strong>Falta:</strong> <span id="viewDetailEncargoFalta">-</span></div>
+                    <div class="pill"><strong>Estado pago:</strong> <span id="viewDetailEncargoPagoEstado">-</span></div>
+                    <div class="pill"><strong>Estado pedido:</strong> <span id="viewDetailEncargoPedidoEstado">-</span></div>
+                    <div class="pill"><strong>Entregado:</strong> <span id="viewDetailEncargoEntregadoAt">-</span></div>
+                  </div>
+                </div>
+
+                <div class="block" style="margin-top:12px;">
+                  <h3 style="margin:0 0 12px;">Servicios del encargo</h3>
+                  <div class="tableWrap">
+                    <table class="table" aria-label="Servicios del encargo">
+                      <thead>
+                        <tr>
+                          <th>Servicio</th>
+                          <th>Cant.</th>
+                          <th>Precio</th>
+                          <th>Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody id="viewEncargoServicesBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="block" style="margin-top:12px;">
+                  <h3 style="margin:0 0 12px;">Uso registrado</h3>
+                  <div class="tableWrap">
+                    <table class="table" aria-label="Uso registrado del encargo">
+                      <thead>
+                        <tr>
+                          <th>Concepto</th>
+                          <th>Cantidad</th>
+                        </tr>
+                      </thead>
+                      <tbody id="viewEncargoUsageBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </section>
+          <section class="section" id="usageSummarySection">
+            <hr class="sep" />
+          
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+              <h2 style="margin:0;">Resumen de uso</h2>
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" id="loadUsageSummaryBtn" class="primary" style="width:auto;">
+                  Cargar resumen de uso
+                </button>
+                <button type="button" id="clearUsageFiltersBtn" class="ghost" style="width:auto;">
+                  Ver todo
+                </button>
+              </div>
+            </div>
+          
+            <p class="muted" style="margin-top:0;">
+              Aquí se muestra el uso de ventas y encargos por separado, y el total general.
+            </p>
+          
+            <div class="grid" style="margin-top:12px;">
+              <div class="field">
+                <label for="usageFromDate">Desde</label>
+                <input id="usageFromDate" type="date" />
+              </div>
+          
+              <div class="field">
+                <label for="usageToDate">Hasta</label>
+                <input id="usageToDate" type="date" />
+              </div>
+          
+              <div class="field">
+                <label for="usageEmployeeFilter">Empleado</label>
+                <select id="usageEmployeeFilter">
+                  <option value="">Todos</option>
+                  <option value="Empleado 1">Empleado 1</option>
+                  <option value="Empleado 2">Empleado 2</option>
+                  <option value="Empleado 3">Empleado 3</option>
+                </select>
+              </div>
+            </div>
+          
+            <div class="block" style="margin-top:12px;">
+              <h3 style="margin:0 0 12px;">Uso en ventas</h3>
+              <div class="tableWrap">
+                <table class="table" aria-label="Uso en ventas">
+                  <thead>
+                    <tr>
+                      <th>Concepto</th>
+                      <th>Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usageSalesBody"></tbody>
+                </table>
+              </div>
+            </div>
+          
+            <div class="block" style="margin-top:12px;">
+              <h3 style="margin:0 0 12px;">Uso en encargos</h3>
+              <div class="tableWrap">
+                <table class="table" aria-label="Uso en encargos">
+                  <thead>
+                    <tr>
+                      <th>Concepto</th>
+                      <th>Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usageEncargosBody"></tbody>
+                </table>
+              </div>
+            </div>
+          
+            <div class="block" style="margin-top:12px;">
+              <h3 style="margin:0 0 12px;">Total general</h3>
+              <div class="tableWrap">
+                <table class="table" aria-label="Uso total general">
+                  <thead>
+                    <tr>
+                      <th>Concepto</th>
+                      <th>Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usageTotalBody"></tbody>
+                </table>
+              </div>
+            </div>
+          
+            <p id="usageSummaryStatus" class="status"></p>
+          </section>
+        </div>
+
+        <!-- ========================= -->
+        <!-- TAB: ENCARGOS -->
+        <!-- ========================= -->
+        <div id="encargosTab" class="tabContent">
+          <section class="section" id="encargoSection">
+            <h2>Registro de Encargo</h2>
+
+            <form id="encargoForm" autocomplete="off">
+              <div class="grid">
+                <div class="field">
+                  <label for="encargoEmployee">Empleado</label>
+                  <select id="encargoEmployee" required>
+                    <option value="" selected disabled>Selecciona empleado</option>
+                    <option value="Empleado 1">Empleado 1</option>
+                    <option value="Empleado 2">Empleado 2</option>
+                    <option value="Empleado 3">Empleado 3</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="encargoClientName">Nombre del cliente</label>
+                  <input type="text" id="encargoClientName" placeholder="Nombre del cliente" required />
+                </div>
+
+                <div class="field">
+                  <label for="encargoClientPhone">Teléfono del cliente</label>
+                  <input type="text" id="encargoClientPhone" placeholder="Teléfono del cliente" />
+                </div>
+
+                <div class="field">
+                  <label for="encargoKilos">Kilos pesados ($26 por kilo)</label>
+                  <input type="number" id="encargoKilos" min="0" step="0.01" value="0" />
+                </div>
+              </div>
+
+              <details class="block" style="margin-top:12px;">
+                <summary>Servicios adicionales</summary>
+
+                <div class="grid" style="margin-top:12px;">
+                  <div class="field">
+                    <label for="edredonIndividual">Edredón/Cobertor Individual ($95)</label>
+                    <input type="number" id="edredonIndividual" min="0" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="edredonMatrimonial">Edredón/Cobertor Matrimonial ($100)</label>
+                    <input type="number" id="edredonMatrimonial" min="0" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="edredonKing">Edredón/Cobertor King Size ($110)</label>
+                    <input type="number" id="edredonKing" min="0" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="colchaIndividual">Colcha Individual (90)</label>
+                    <input type="number" id="colchaIndividual" min="0" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="colchaMatrimonial">Colcha Matrimonial ($95)</label>
+                    <input type="number" id="colchaMatrimonial" min="0" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="colchaKing">Colcha King Size ($100)</label>
+                    <input type="number" id="colchaKing" min="0" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="mantelesKilos">Manteles (por kilo)</label>
+                    <input type="number" id="mantelesKilos" min="0" step="0.01" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="almohadasPeluchesQty">Almohada/Peluches (cantidad de piezas)</label>
+                    <input type="number" id="almohadasPeluchesQty" min="0" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="almohadasPeluchesPrice">Almohada/Peluches (precio conveniente)</label>
+                    <input type="number" id="almohadasPeluchesPrice" min="0" step="0.01" value="0" />
+                  </div>
+                </div>
+              </details>
+
+              <div class="grid" style="margin-top:16px;">
+                <div class="field">
+                  <label for="encargoPaymentStatus">Estado de pago</label>
+                  <select id="encargoPaymentStatus" required>
+                    <option value="pagado">Pagado</option>
+                    <option value="pendiente">Pendiente / Adelanto</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="encargoAmountPaid">¿Con cuánto paga?</label>
+                  <input type="number" id="encargoAmountPaid" min="0" step="0.01" value="0" />
+                </div>
+              </div>
+
+              <div class="grid" style="margin-top:12px;">
+                <div class="field">
+                  <label>Total</label>
+                  <div class="pill" id="encargoTotal">$0</div>
+                </div>
+
+                <div class="field">
+                  <label id="encargoResultLabel">Cambio</label>
+                  <div class="pill" id="encargoResult">$0</div>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button type="submit" id="saveEncargoBtn" class="primary">Registrar encargo</button>
+                <button type="button" id="newEncargoBtn" class="ghost" disabled>Nuevo encargo</button>
+              </div>
+
+              <p id="encargoStatus" class="status"></p>
+            </form>
+
+            <hr class="sep" />
+
+            <section class="section">
+              <h2>Lista de encargos</h2>
+
+              <div class="grid">
+                <div class="field">
+                  <label for="encargoFromDate">Desde</label>
+                  <input id="encargoFromDate" type="date" />
+                </div>
+
+                <div class="field">
+                  <label for="encargoToDate">Hasta</label>
+                  <input id="encargoToDate" type="date" />
+                </div>
+
+                <div class="field">
+                  <label for="encargoEmployeeFilter">Empleado</label>
+                  <select id="encargoEmployeeFilter">
+                    <option value="">Todos</option>
+                    <option value="Empleado 1">Empleado 1</option>
+                    <option value="Empleado 2">Empleado 2</option>
+                    <option value="Empleado 3">Empleado 3</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label>&nbsp;</label>
+                  <button type="button" id="loadEncargosBtn" class="primary">Cargar pedidos</button>
+                </div>
+              </div>
+
+              <div class="tableWrap" style="margin-top:12px;">
+                <table class="table" aria-label="Tabla de encargos">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Fecha</th>
+                      <th>Empleado</th>
+                      <th>Cliente</th>
+                      <th>Teléfono</th>
+                      <th>Pedido</th>
+                      <th>Pago</th>
+                      <th>Total</th>
+                      <th>Cambio / Falta</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="encargosBody"></tbody>
+                </table>
+              </div>
+
+              <p id="encargosListStatus" class="status"></p>
+            </section>
+
+            <section class="section" id="encargoDetailPanel" style="display:none;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                <h2 style="margin:0;">Detalle del encargo</h2>
+                <button type="button" id="closeEncargoDetailBtn" class="ghost" style="width:auto;">Cerrar</button>
+              </div>
+
+              <div class="block" style="margin-top:12px;">
+                <div class="grid">
+                  <div class="pill"><strong>ID:</strong> <span id="detailEncargoId">-</span></div>
+                  <div class="pill"><strong>Cliente:</strong> <span id="detailEncargoCliente">-</span></div>
+                  <div class="pill"><strong>Empleado:</strong> <span id="detailEncargoEmpleado">-</span></div>
+                  <div class="pill"><strong>Total:</strong> <span id="detailEncargoTotal">-</span></div>
+                </div>
+              </div>
+
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 12px;">Lavadoras usadas</h3>
+                <div class="grid">
+                  <div class="field">
+                    <label for="useLav16">Lavadora 16 kg</label>
+                    <input type="number" id="useLav16" min="0" value="0" />
+                  </div>
+                  <div class="field">
+                    <label for="useLav9">Lavadora 9 kg</label>
+                    <input type="number" id="useLav9" min="0" value="0" />
+                  </div>
+                  <div class="field">
+                    <label for="useLav4">Lavadora 4 kg</label>
+                    <input type="number" id="useLav4" min="0" value="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 12px;">Secadoras usadas</h3>
+                <div class="grid">
+                  <div class="field">
+                    <label for="useSec15">Secadora 9 kg (15 min)</label>
+                    <input type="number" id="useSec15" min="0" value="0" />
+                  </div>
+                  <div class="field">
+                    <label for="useSec30">Secadora 9 kg (30 min)</label>
+                    <input type="number" id="useSec30" min="0" value="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 12px;">Detergentes usados</h3>
+                <div class="grid">
+                  <div class="field">
+                    <label for="useJabon">Medidas de jabón</label>
+                    <input type="number" id="useJabon" min="0" value="0" />
+                  </div>
+                  <div class="field">
+                    <label for="useSuavizante">Medidas de suavizante</label>
+                    <input type="number" id="useSuavizante" min="0" value="0" />
+                  </div>
+                  <div class="field">
+                    <label for="useDesmugrante">Medidas de desmugrante</label>
+                    <input type="number" id="useDesmugrante" min="0" value="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 12px;">Bolsas usadas</h3>
+                <div class="grid">
+                  <div class="field">
+                    <label for="useBolsaChica">Bolsas chicas</label>
+                    <input type="number" id="useBolsaChica" min="0" value="0" />
+                  </div>
+                  <div class="field">
+                    <label for="useBolsaMediana">Bolsas medianas</label>
+                    <input type="number" id="useBolsaMediana" min="0" value="0" />
+                  </div>
+                  <div class="field">
+                    <label for="useBolsaGrande">Bolsas grandes</label>
+                    <input type="number" id="useBolsaGrande" min="0" value="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 12px;">Pago y entrega</h3>
+                <div class="grid">
+                  <div class="field">
+                    <label for="detailPaymentStatus">Estado de pago</label>
+                    <select id="detailPaymentStatus">
+                      <option value="pagado">Pagado</option>
+                      <option value="pendiente">Pendiente / Adelanto</option>
+                    </select>
+                  </div>
+
+                  <div class="field">
+                    <label for="detailAmountPaid">Monto pagado total</label>
+                    <input type="number" id="detailAmountPaid" min="0" step="0.01" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="detailAbonoHoy">Abono de hoy</label>
+                    <input type="number" id="detailAbonoHoy" min="0" step="0.01" value="0" />
+                  </div>
+
+                  <div class="field">
+                    <label for="detailDelivered">Estado del pedido</label>
+                    <select id="detailDelivered">
+                      <option value="pendiente">Pendiente</option>
+                      <option value="entregado">Entregado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid" style="margin-top:12px;">
+                  <div class="field">
+                    <label id="detailPaymentResultLabel">Cambio</label>
+                    <div class="pill" id="detailPaymentResult">$0</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button type="button" id="saveEncargoUsageBtn" class="primary">Guardar y marcar como entregado</button>
+              </div>
+
+              <p id="encargoDetailStatus" class="status"></p>
+            </section>
+          </section>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <small>Lavandería • Control de ventas</small>
+      </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/script.js"></script>
+  </body>
+</html>
+
+
+
+
+
+
