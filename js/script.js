@@ -15,7 +15,7 @@ if (window.supabase && typeof window.supabase.createClient === "function") {
 // =====================
 // Estado de la venta
 // =====================
-let cart = []; // [{ id, name, category, price, qty }]
+let cart = [];
 let lastSaved = null;
 
 const $ = (sel) => document.querySelector(sel);
@@ -232,7 +232,7 @@ cartBody.addEventListener("click", (e) => {
 cashEl.addEventListener("input", () => render());
 
 // =====================
-// Guardar venta (Opción A: ventas + venta_items)
+// Guardar venta
 // =====================
 async function saveToSupabase(salePayload) {
   ensureSupabase();
@@ -331,7 +331,7 @@ saleForm.addEventListener("submit", async (e) => {
   }
 });
 
-// Nueva venta (reset)
+// Nueva venta
 newBtn.addEventListener("click", () => {
   cart = [];
   lastSaved = null;
@@ -347,7 +347,7 @@ newBtn.addEventListener("click", () => {
 render();
 
 // =====================
-// Ver ventas (lectura)
+// Ver ventas
 // =====================
 const fromDateEl = $("#fromDate");
 const toDateEl = $("#toDate");
@@ -381,6 +381,8 @@ async function loadSales() {
 
   salesStatus.textContent = "Cargando ventas...";
   clearSalesTable();
+  detailPanel.style.display = "none";
+  detailBody.innerHTML = "";
 
   const from = fromDateEl.value;
   const to = toDateEl.value;
@@ -441,7 +443,7 @@ async function loadSaleDetail(ventaId) {
   ensureSupabase();
 
   detailPanel.style.display = "block";
-  detailBody.innerHTML = `<tr><td colspan="5" class= "muted">Cargando detalle...</td></tr>`;
+  detailBody.innerHTML = `<tr><td colspan="5" class="muted">Cargando detalle...</td></tr>`;
 
   const { data, error } = await supabaseClient
     .from("venta_items")
@@ -773,8 +775,8 @@ encargoForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  const kilosSubtotal = kilos * 22;
-  const mantelesSubtotal = num(mantelesKilos.value) * 22;
+  const kilosSubtotal = kilos * 26;
+  const mantelesSubtotal = num(mantelesKilos.value) * 55;
   const almohadasSubtotal = num(almohadasPeluchesPrice.value);
 
   const cambio = paymentStatus === "pagado" ? amountPaid - total : 0;
@@ -1038,6 +1040,8 @@ async function loadEncargosList() {
   ensureSupabase();
 
   encargosListStatus.textContent = "Cargando pedidos...";
+  clearEncargosTable();
+  if (encargoDetailPanel) encargoDetailPanel.style.display = "none";
 
   let q = supabaseClient
     .from("encargos")
@@ -1057,11 +1061,11 @@ async function loadEncargosList() {
     .order("created_at", { ascending: false });
 
   if (encargoFromDate.value) {
-    q = q.gte("created_at", `${encargoFromDate.value} 00:00:00`);
+    q = q.gte("created_at", `${encargoFromDate.value}T00:00:00`);
   }
 
   if (encargoToDate.value) {
-    q = q.lte("created_at", `${encargoToDate.value} 23:59:59`);
+    q = q.lte("created_at", `${encargoToDate.value}T23:59:59`);
   }
 
   if (encargoEmployeeFilter.value) {
@@ -1111,7 +1115,7 @@ async function loadEncargosList() {
 
 async function openEncargoDetail(id) {
   ensureSupabase();
-  
+
   currentEncargoId = id;
   encargoDetailStatus.textContent = "";
   encargoDetailPanel.style.display = "block";
@@ -1446,11 +1450,11 @@ async function loadViewEncargos() {
     .order("created_at", { ascending: false });
 
   if (viewEncargoFromDate && viewEncargoFromDate.value) {
-    q = q.gte("created_at", `${viewEncargoFromDate.value} 00:00:00`);
+    q = q.gte("created_at", `${viewEncargoFromDate.value}T00:00:00`);
   }
 
   if (viewEncargoToDate && viewEncargoToDate.value) {
-    q = q.lte("created_at", `${viewEncargoToDate.value} 23:59:59`);
+    q = q.lte("created_at", `${viewEncargoToDate.value}T23:59:59`);
   }
 
   if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
@@ -1666,36 +1670,27 @@ function normalizeUsageName(name) {
     "lavadora 16 kg": "Lavadora 16 kg",
     "lavadora 9 kg": "Lavadora 9 kg",
     "lavadora 4 kg": "Lavadora 4 kg",
-
     "secadora 9 kg (15 min)": "Secadora 9 kg (15 min)",
     "secadora 9 kg (15 minutos)": "Secadora 9 kg (15 min)",
-
     "secadora 9 kg (30 min)": "Secadora 9 kg (30 min)",
     "secadora 9 kg (30 minutos)": "Secadora 9 kg (30 min)",
-
     "secado (precio libre)": "Secado (precio libre)",
     "secado": "Secado (precio libre)",
-
     "1 medida de jabón": "1 medida de jabón",
     "1 medida de jabon": "1 medida de jabón",
     "medida de jabón": "1 medida de jabón",
     "medida de jabon": "1 medida de jabón",
     "jabon": "1 medida de jabón",
     "jabón": "1 medida de jabón",
-
     "1 medida de suavizante": "1 medida de suavizante",
     "medida de suavizante": "1 medida de suavizante",
-
     "1 medida de desmugrante": "1 medida de desmugrante",
     "medida de desmugrante": "1 medida de desmugrante",
-
     "bolsa chica": "Bolsa chica",
     "bolsa mediana": "Bolsa mediana",
     "bolsa grande": "Bolsa grande",
-
     "suavizante (botella)": "Suavizante (botella)",
     "suavizante": "Suavizante (botella)",
-
     "pinol": "Pinol",
     "cloro": "Cloro",
     "jabón en polvo": "Jabón en polvo",
@@ -1717,9 +1712,6 @@ async function loadUsageSummary() {
   const to = usageToDate?.value?.trim() || "";
   const emp = usageEmployeeFilter?.value?.trim() || "";
 
-  // =========================
-  // VENTAS
-  // =========================
   let ventasQuery = supabaseClient
     .from("ventas")
     .select("id, employee, sale_date");
@@ -1754,7 +1746,7 @@ async function loadUsageSummary() {
     for (const item of itemsData || []) {
       const name = item.name;
       const qty = Number(item.qty || 0);
-    
+
       if (name === "Secadora 9 kg (15 min)" || name === "Solo secado 9 kg (15 min)") {
         salesUsage["Secadora 9 kg (15 min)"] += qty;
       } else if (name === "Secadora 9 kg (30 min)" || name === "Solo secado 9 kg (30 min)") {
@@ -1765,9 +1757,6 @@ async function loadUsageSummary() {
     }
   }
 
-  // =========================
-  // ENCARGOS
-  // =========================
   let encargosQuery = supabaseClient
     .from("encargos")
     .select(`
@@ -1786,8 +1775,8 @@ async function loadUsageSummary() {
       used_bolsa_grande
     `);
 
-  if (from) encargosQuery = encargosQuery.gte("created_at", `${from} 00:00:00`);
-  if (to) encargosQuery = encargosQuery.lte("created_at", `${to} 23:59:59`);
+  if (from) encargosQuery = encargosQuery.gte("created_at", `${from}T00:00:00`);
+  if (to) encargosQuery = encargosQuery.lte("created_at", `${to}T23:59:59`);
   if (emp) encargosQuery = encargosQuery.eq("employee", emp);
 
   const { data: encargosData, error: encargosError } = await encargosQuery;
@@ -1817,9 +1806,6 @@ async function loadUsageSummary() {
     encargosUsage["Bolsa grande"] += Number(row.used_bolsa_grande || 0);
   }
 
-  // =========================
-  // TOTAL
-  // =========================
   const totalUsage = sumUsageMaps(salesUsage, encargosUsage);
 
   renderUsageTable(usageSalesBody, salesUsage);
