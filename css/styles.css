@@ -254,13 +254,3 @@ button:disabled {
 .tabContent.active {
   display: block;
 }
-
-select {
-  color: #000;
-  background: #fff;
-}
-
-select option {
-  color: #000;
-  background: #fff;
-}
