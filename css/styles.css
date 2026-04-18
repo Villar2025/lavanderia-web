@@ -255,12 +255,13 @@ button:disabled {
   display: block;
 }
 
+/* 🔥 Arreglar color de selects */
 select {
-  color: var(--text);
-  background: rgba(255,255,255,0.04);
+  color: #000; /* texto negro */
+  background-color: #fff; /* fondo blanco */
 }
 
-/* SOLO cuando abres opciones */
+/* Opciones del dropdown */
 select option {
   color: #000;
   background-color: #fff;
