@@ -83,8 +83,8 @@
                   <select class="productSelect" data-category="detergentes">
                     <option value="" selected disabled>Selecciona un producto</option>
                     <option value="1 medida de jabón" data-price="13">1 medida de jabón — $13</option>
-                    <option value="1 medida de suavizante" data-price="10">1 medida de suavizante — $10</option>
-                    <option value="1 medida de desmugrante" data-price="15">1 medida de desmugrante — $15</option>
+                    <option value="1 medida de suavizante" data-price="13">1 medida de suavizante — $13</option>
+                    <option value="1 medida de desmugrante" data-price="18">1 medida de desmugrante — $18</option>
                   </select>
 
                   <input class="qtyInput" type="number" min="1" value="1" />
@@ -202,12 +202,12 @@
           <section class="section" id="viewSalesSection" style="display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
               <h2 style="margin:0;">Ver ventas</h2>
-
+            
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="button" id="deleteAllDataBtn" class="iconBtn" style="width:auto;">
                   Eliminar datos (conservar pendientes)
                 </button>
-
+            
                 <button type="button" id="logoutBtn" class="ghost" style="width:auto;">
                   Cerrar sesión
                 </button>
@@ -381,7 +381,6 @@
                   <strong>Detalle de encargo</strong>
                   <button type="button" id="closeViewEncargoDetail" class="ghost" style="width:auto;">Cerrar</button>
                 </div>
-
                 <div class="block" style="margin-top:12px;">
                   <div class="grid">
                     <div class="pill"><strong>ID:</strong> <span id="viewDetailEncargoId">-</span></div>
@@ -435,7 +434,7 @@
           </section>
           <section class="section" id="usageSummarySection">
             <hr class="sep" />
-
+          
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
               <h2 style="margin:0;">Resumen de uso</h2>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -447,22 +446,22 @@
                 </button>
               </div>
             </div>
-
+          
             <p class="muted" style="margin-top:0;">
               Aquí se muestra el uso de ventas y encargos por separado, y el total general.
             </p>
-
+          
             <div class="grid" style="margin-top:12px;">
               <div class="field">
                 <label for="usageFromDate">Desde</label>
                 <input id="usageFromDate" type="date" />
               </div>
-
+          
               <div class="field">
                 <label for="usageToDate">Hasta</label>
                 <input id="usageToDate" type="date" />
               </div>
-
+          
               <div class="field">
                 <label for="usageEmployeeFilter">Empleado</label>
                 <select id="usageEmployeeFilter">
@@ -473,7 +472,7 @@
                 </select>
               </div>
             </div>
-
+          
             <div class="block" style="margin-top:12px;">
               <h3 style="margin:0 0 12px;">Uso en ventas</h3>
               <div class="tableWrap">
@@ -488,7 +487,7 @@
                 </table>
               </div>
             </div>
-
+          
             <div class="block" style="margin-top:12px;">
               <h3 style="margin:0 0 12px;">Uso en encargos</h3>
               <div class="tableWrap">
@@ -503,7 +502,7 @@
                 </table>
               </div>
             </div>
-
+          
             <div class="block" style="margin-top:12px;">
               <h3 style="margin:0 0 12px;">Total general</h3>
               <div class="tableWrap">
@@ -518,7 +517,7 @@
                 </table>
               </div>
             </div>
-
+          
             <p id="usageSummaryStatus" class="status"></p>
           </section>
         </div>
@@ -620,10 +619,9 @@
 
                 <div class="field">
                   <label for="encargoAmountPaid">¿Con cuánto paga?</label>
-                  <input type="number" id="encargoAmountPaid" min="0" step="0.01" value="0" />
+                  <input type="number" id="encargoAmountPaid" min="0" step="1" value="0" />
                 </div>
               </div>
-
               <div class="grid" style="margin-top:12px;">
                 <div class="field">
                   <label>Total</label>
@@ -795,12 +793,12 @@
 
                   <div class="field">
                     <label for="detailAmountPaid">Monto pagado total</label>
-                    <input type="number" id="detailAmountPaid" min="0" step="0.01" value="0" />
+                    <input type="number" id="detailAmountPaid" min="0" step="1" value="0" />
                   </div>
 
                   <div class="field">
                     <label for="detailAbonoHoy">Abono de hoy</label>
-                    <input type="number" id="detailAbonoHoy" min="0" step="0.01" value="0" />
+                    <input type="number" id="detailAbonoHoy" min="0" step="1" value="0" />
                   </div>
 
                   <div class="field">
@@ -839,5 +837,4 @@
     <script src="js/script.js"></script>
   </body>
 </html>
-
 
