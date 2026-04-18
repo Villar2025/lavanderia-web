@@ -15,7 +15,7 @@ if (window.supabase && typeof window.supabase.createClient === "function") {
 // =====================
 // Estado de la venta
 // =====================
-let cart = [];
+let cart = []; // [{ id, name, category, price, qty }]
 let lastSaved = null;
 
 const $ = (sel) => document.querySelector(sel);
@@ -50,9 +50,23 @@ const saveBtn = $("#saveBtn");
   saleDateEl.value = `${yyyy}-${mm}-${dd}`;
 })();
 
+function wholeMoney(n) {
+  return Math.round(n);
+}
+
 function money(n) {
-  const val = Number(n || 0);
+  const val = wholeMoney(n);
   return `$${val.toLocaleString("es-MX")}`;
+}
+
+function localDateStartISO(dateStr) {
+  if (!dateStr) return "";
+  return new Date(`${dateStr}T00:00:00`).toISOString();
+}
+
+function localDateEndISO(dateStr) {
+  if (!dateStr) return "";
+  return new Date(`${dateStr}T23:59:59.999`).toISOString();
 }
 
 function getLocalDateTime() {
@@ -70,13 +84,14 @@ function getLocalDateTime() {
 }
 
 function calcTotal() {
-  return cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const rawTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  return Math.ceil(rawTotal);
 }
 
 function calcChange() {
   const total = calcTotal();
-  const cash = Number(cashEl.value || 0);
-  return cash - total;
+  const cash = wholeMoney(cashEl.value || 0);
+  return Math.round(cash - total);
 }
 
 function render() {
@@ -184,7 +199,7 @@ document.querySelectorAll(".addBtn").forEach((btn) => {
 // Secado precio libre
 $("#addCustomDry").addEventListener("click", () => {
   const input = $("#customDryPrice");
-  const price = Number(input.value || 0);
+  const price = wholeMoney(input.value || 0);
 
   if (!Number.isFinite(price) || price <= 0) {
     statusEl.textContent = "Escribe un precio válido para el secado.";
@@ -232,7 +247,7 @@ cartBody.addEventListener("click", (e) => {
 cashEl.addEventListener("input", () => render());
 
 // =====================
-// Guardar venta
+// Guardar venta (Opción A: ventas + venta_items)
 // =====================
 async function saveToSupabase(salePayload) {
   ensureSupabase();
@@ -292,7 +307,7 @@ saleForm.addEventListener("submit", async (e) => {
   if (cart.length === 0) return (statusEl.textContent = "Agrega al menos un producto.");
 
   const total = calcTotal();
-  const cash = Number(cashEl.value || 0);
+  const cash = wholeMoney(cashEl.value || 0);
   const change = cash - total;
 
   if (!Number.isFinite(cash) || cash <= 0) return (statusEl.textContent = "Escribe el dinero recibido.");
@@ -306,7 +321,7 @@ saleForm.addEventListener("submit", async (e) => {
       category: i.category,
       price: i.price,
       qty: i.qty,
-      subtotal: i.price * i.qty,
+      subtotal: wholeMoney(i.price * i.qty),
     })),
     total,
     cash,
@@ -331,7 +346,7 @@ saleForm.addEventListener("submit", async (e) => {
   }
 });
 
-// Nueva venta
+// Nueva venta (reset)
 newBtn.addEventListener("click", () => {
   cart = [];
   lastSaved = null;
@@ -347,7 +362,7 @@ newBtn.addEventListener("click", () => {
 render();
 
 // =====================
-// Ver ventas
+// Ver ventas (lectura)
 // =====================
 const fromDateEl = $("#fromDate");
 const toDateEl = $("#toDate");
@@ -381,8 +396,6 @@ async function loadSales() {
 
   salesStatus.textContent = "Cargando ventas...";
   clearSalesTable();
-  detailPanel.style.display = "none";
-  detailBody.innerHTML = "";
 
   const from = fromDateEl.value;
   const to = toDateEl.value;
@@ -443,7 +456,7 @@ async function loadSaleDetail(ventaId) {
   ensureSupabase();
 
   detailPanel.style.display = "block";
-  detailBody.innerHTML = `<tr><td colspan="5" class="muted">Cargando detalle...</td></tr>`;
+  detailBody.innerHTML = `<tr><td colspan="5" class= "muted">Cargando detalle...</td></tr>`;
 
   const { data, error } = await supabaseClient
     .from("venta_items")
@@ -680,12 +693,12 @@ function calcEncargoTotal() {
 
   const almohadasSubtotal = num(almohadasPeluchesPrice.value);
 
-  return kilosSubtotal + edredonSubtotal + colchaSubtotal + mantelesSubtotal + almohadasSubtotal;
+  return wholeMoney(kilosSubtotal + edredonSubtotal + colchaSubtotal + mantelesSubtotal + almohadasSubtotal);
 }
 
 function updateEncargoSummary() {
   const total = calcEncargoTotal();
-  const paid = num(encargoAmountPaid.value);
+  const paid = wholeMoney(encargoAmountPaid.value);
   const status = encargoPaymentStatus.value;
 
   encargoTotal.textContent = money(total);
@@ -752,7 +765,7 @@ encargoForm.addEventListener("submit", async (e) => {
   const kilos = num(encargoKilos.value);
 
   const paymentStatus = encargoPaymentStatus.value;
-  const amountPaid = num(encargoAmountPaid.value);
+  const amountPaid = wholeMoney(encargoAmountPaid.value);
   const total = calcEncargoTotal();
 
   if (!employee) {
@@ -775,12 +788,12 @@ encargoForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  const kilosSubtotal = kilos * 26;
-  const mantelesSubtotal = num(mantelesKilos.value) * 55;
-  const almohadasSubtotal = num(almohadasPeluchesPrice.value);
+  const kilosSubtotal = wholeMoney(kilos * 26);
+  const mantelesSubtotal = wholeMoney(num(mantelesKilos.value) * 55);
+  const almohadasSubtotal = wholeMoney(almohadasPeluchesPrice.value);
 
-  const cambio = paymentStatus === "pagado" ? amountPaid - total : 0;
-  const amountDue = paymentStatus === "pendiente" ? Math.max(total - amountPaid, 0) : 0;
+  const cambio = paymentStatus === "pagado" ? wholeMoney(amountPaid - total) : 0;
+  const amountDue = paymentStatus === "pendiente" ? wholeMoney(Math.max(total - amountPaid, 0)) : 0;
 
   const payload = {
     employee,
@@ -1041,7 +1054,6 @@ async function loadEncargosList() {
 
   encargosListStatus.textContent = "Cargando pedidos...";
   clearEncargosTable();
-  if (encargoDetailPanel) encargoDetailPanel.style.display = "none";
 
   let q = supabaseClient
     .from("encargos")
@@ -1061,11 +1073,11 @@ async function loadEncargosList() {
     .order("created_at", { ascending: false });
 
   if (encargoFromDate.value) {
-    q = q.gte("created_at", `${encargoFromDate.value}T00:00:00`);
+    q = q.gte("created_at", `${encargoFromDate.value} 00:00:00`);
   }
 
   if (encargoToDate.value) {
-    q = q.lte("created_at", `${encargoToDate.value}T23:59:59`);
+    q = q.lte("created_at", `${encargoToDate.value} 23:59:59`);
   }
 
   if (encargoEmployeeFilter.value) {
@@ -1115,7 +1127,7 @@ async function loadEncargosList() {
 
 async function openEncargoDetail(id) {
   ensureSupabase();
-
+  
   currentEncargoId = id;
   encargoDetailStatus.textContent = "";
   encargoDetailPanel.style.display = "block";
@@ -1188,7 +1200,7 @@ async function saveEncargoUsageAndDelivery() {
   }
 
   const paymentStatus = detailPaymentStatus.value;
-  const amountPaid = Number(currentEncargoPaid || 0) + Number(detailAbonoHoy?.value || 0);
+  const amountPaid = wholeMoney(Number(currentEncargoPaid || 0) + Number(detailAbonoHoy?.value || 0));
   const deliveredStatus = detailDelivered.value === "entregado" ? "entregado" : "pendiente";
   const total = Number(currentEncargoTotal || 0);
 
@@ -1215,8 +1227,8 @@ async function saveEncargoUsageAndDelivery() {
 
     payment_status: paymentStatus,
     amount_paid: amountPaid,
-    change: paymentStatus === "pagado" ? amountPaid - total : 0,
-    amount_due: paymentStatus === "pendiente" ? Math.max(total - amountPaid, 0) : 0,
+    change: paymentStatus === "pagado" ? wholeMoney(amountPaid - total) : 0,
+    amount_due: paymentStatus === "pendiente" ? wholeMoney(Math.max(total - amountPaid, 0)) : 0,
 
     delivered_status: deliveredStatus,
     delivered_at: deliveredStatus === "entregado" ? new Date().toISOString() : null,
@@ -1450,11 +1462,11 @@ async function loadViewEncargos() {
     .order("created_at", { ascending: false });
 
   if (viewEncargoFromDate && viewEncargoFromDate.value) {
-    q = q.gte("created_at", `${viewEncargoFromDate.value}T00:00:00`);
+    q = q.gte("created_at", localDateStartISO(viewEncargoFromDate.value));
   }
 
   if (viewEncargoToDate && viewEncargoToDate.value) {
-    q = q.lte("created_at", `${viewEncargoToDate.value}T23:59:59`);
+    q = q.lte("created_at", localDateEndISO(viewEncargoToDate.value));
   }
 
   if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
@@ -1670,27 +1682,36 @@ function normalizeUsageName(name) {
     "lavadora 16 kg": "Lavadora 16 kg",
     "lavadora 9 kg": "Lavadora 9 kg",
     "lavadora 4 kg": "Lavadora 4 kg",
+
     "secadora 9 kg (15 min)": "Secadora 9 kg (15 min)",
     "secadora 9 kg (15 minutos)": "Secadora 9 kg (15 min)",
+
     "secadora 9 kg (30 min)": "Secadora 9 kg (30 min)",
     "secadora 9 kg (30 minutos)": "Secadora 9 kg (30 min)",
+
     "secado (precio libre)": "Secado (precio libre)",
     "secado": "Secado (precio libre)",
+
     "1 medida de jabón": "1 medida de jabón",
     "1 medida de jabon": "1 medida de jabón",
     "medida de jabón": "1 medida de jabón",
     "medida de jabon": "1 medida de jabón",
     "jabon": "1 medida de jabón",
     "jabón": "1 medida de jabón",
+
     "1 medida de suavizante": "1 medida de suavizante",
     "medida de suavizante": "1 medida de suavizante",
+
     "1 medida de desmugrante": "1 medida de desmugrante",
     "medida de desmugrante": "1 medida de desmugrante",
+
     "bolsa chica": "Bolsa chica",
     "bolsa mediana": "Bolsa mediana",
     "bolsa grande": "Bolsa grande",
+
     "suavizante (botella)": "Suavizante (botella)",
     "suavizante": "Suavizante (botella)",
+
     "pinol": "Pinol",
     "cloro": "Cloro",
     "jabón en polvo": "Jabón en polvo",
@@ -1712,6 +1733,9 @@ async function loadUsageSummary() {
   const to = usageToDate?.value?.trim() || "";
   const emp = usageEmployeeFilter?.value?.trim() || "";
 
+  // =========================
+  // VENTAS
+  // =========================
   let ventasQuery = supabaseClient
     .from("ventas")
     .select("id, employee, sale_date");
@@ -1746,7 +1770,7 @@ async function loadUsageSummary() {
     for (const item of itemsData || []) {
       const name = item.name;
       const qty = Number(item.qty || 0);
-
+    
       if (name === "Secadora 9 kg (15 min)" || name === "Solo secado 9 kg (15 min)") {
         salesUsage["Secadora 9 kg (15 min)"] += qty;
       } else if (name === "Secadora 9 kg (30 min)" || name === "Solo secado 9 kg (30 min)") {
@@ -1757,6 +1781,9 @@ async function loadUsageSummary() {
     }
   }
 
+  // =========================
+  // ENCARGOS
+  // =========================
   let encargosQuery = supabaseClient
     .from("encargos")
     .select(`
@@ -1775,8 +1802,8 @@ async function loadUsageSummary() {
       used_bolsa_grande
     `);
 
-  if (from) encargosQuery = encargosQuery.gte("created_at", `${from}T00:00:00`);
-  if (to) encargosQuery = encargosQuery.lte("created_at", `${to}T23:59:59`);
+  if (from) encargosQuery = encargosQuery.gte("created_at", localDateStartISO(from));
+  if (to) encargosQuery = encargosQuery.lte("created_at", localDateEndISO(to));
   if (emp) encargosQuery = encargosQuery.eq("employee", emp);
 
   const { data: encargosData, error: encargosError } = await encargosQuery;
@@ -1806,6 +1833,9 @@ async function loadUsageSummary() {
     encargosUsage["Bolsa grande"] += Number(row.used_bolsa_grande || 0);
   }
 
+  // =========================
+  // TOTAL
+  // =========================
   const totalUsage = sumUsageMaps(salesUsage, encargosUsage);
 
   renderUsageTable(usageSalesBody, salesUsage);
@@ -1862,3 +1892,4 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
+
