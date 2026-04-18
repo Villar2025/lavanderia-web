@@ -254,3 +254,14 @@ button:disabled {
 .tabContent.active {
   display: block;
 }
+
+select {
+  color: var(--text);
+  background: rgba(255,255,255,0.04);
+}
+
+/* SOLO cuando abres opciones */
+select option {
+  color: #000;
+  background-color: #fff;
+}
