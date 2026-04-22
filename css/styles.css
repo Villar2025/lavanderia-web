@@ -272,69 +272,47 @@ select option {
 }
 
 .ticket {
-  width: 58mm;
-  max-width: 58mm;
+  width: 48mm;
+  max-width: 48mm;
   box-sizing: border-box;
-  padding: 2mm;
+  padding: 1mm;
   font-family: Arial, sans-serif;
-  font-size: 8px;
-  line-height: 1.05;
+  font-size: 6px;
+  line-height: 1;
   color: #000;
   background: #fff;
 }
 
-.ticketCenter {
-  text-align: center;
-}
-
 .ticketCenter strong {
-  font-size: 10px;
-}
-
-.ticketLine {
-  border: none;
-  border-top: 1px dashed #000;
-  margin: 2px 0;
+  font-size: 8px;
 }
 
 .ticketTable {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 7px;
+  font-size: 6px;
 }
 
 .ticketTable th,
 .ticketTable td {
   padding: 0;
-  vertical-align: top;
+  margin: 0;
 }
 
-.ticketTable th:nth-child(1),
-.ticketTable td:nth-child(1) {
-  width: 70%;
-  text-align: left;
-}
-
-.ticketTable th:nth-child(2),
-.ticketTable td:nth-child(2) {
-  width: 12%;
-  text-align: center;
-}
-
-.ticketTable th:nth-child(3),
-.ticketTable td:nth-child(3) {
-  width: 18%;
-  text-align: right;
+.ticketLine {
+  border: none;
+  border-top: 1px dashed #000;
+  margin: 1px 0;
 }
 
 .ticketRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   margin: 0;
-  font-size: 8px;
+  font-size: 6px;
 }
 
 @media print {
