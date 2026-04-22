@@ -73,7 +73,6 @@ const encargoTicketPago = $("#encargoTicketPago");
 
 let lastTicketData = null;
 let lastEncargoTicketData = null;
-let currentEncargoRow = null;
 
 // Fecha por defecto: hoy
 (function setDefaultDate() {
@@ -314,143 +313,13 @@ function printTicket() {
   printWindow.document.close();
 }
 
-function openTicketPrintWindow(ticketHtml, title = "Vista previa del ticket") {
-  const printWindow = window.open("", "_blank", "width=340,height=700");
-
-  if (!printWindow) return null;
-
-  printWindow.document.write(`
-    <!doctype html>
-    <html lang="es">
-    <head>
-      <meta charset="UTF-8">
-      <title>${title}</title>
-      <style>
-        html, body {
-          margin: 0;
-          padding: 0;
-          background: #ffffff;
-          color: #000000;
-          font-family: Arial, sans-serif;
-        }
-
-        .ticket {
-          width: 58mm;
-          max-width: 58mm;
-          padding: 6px;
-          box-sizing: border-box;
-          font-size: 12px;
-          line-height: 1.35;
-          color: #000;
-          background: #fff;
-          margin: 0 auto;
-        }
-
-        .ticketCenter {
-          text-align: center;
-        }
-
-        .ticketLine {
-          border: none;
-          border-top: 1px dashed #000;
-          margin: 8px 0;
-        }
-
-        .ticketTable {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 10px;
-        }
-
-        .ticketTable td,
-        .ticketTable th {
-          padding: 2px 0;
-        }
-
-        .printBar {
-          position: sticky;
-          top: 0;
-          background: #fff;
-          border-bottom: 1px solid #ccc;
-          padding: 10px;
-          display: flex;
-          gap: 10px;
-          justify-content: center;
-        }
-
-        .printBtn {
-          padding: 8px 14px;
-          border: 1px solid #000;
-          background: #fff;
-          cursor: pointer;
-        }
-
-        @media print {
-          .printBar {
-            display: none;
-          }
-
-          html, body {
-            width: 58mm;
-            margin: 0;
-            padding: 0;
-          }
-
-          .ticket {
-            width: 58mm;
-            max-width: 58mm;
-            margin: 0;
-            padding: 6px;
-          }
-
-          @page {
-            size: 58mm auto;
-            margin: 0;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="printBar">
-        <button class="printBtn" onclick="window.print()">Imprimir</button>
-      </div>
-
-      <div class="ticket">
-        ${ticketHtml}
-      </div>
-    </body>
-    </html>
-  `);
-
-  printWindow.document.close();
-  return printWindow;
-}
-
-function formatTicketDateTime(dateString) {
-  if (!dateString) return "-";
-
-  const d = new Date(dateString);
-
-  const fecha = d.toLocaleDateString("es-MX", {
-    timeZone: "America/Mexico_City"
-  });
-
-  const hora = d.toLocaleTimeString("es-MX", {
-    timeZone: "America/Mexico_City",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-
-  return `${fecha} ${hora}`;
-}
-
 function buildTicketFromEncargo(row) {
   const total = Number(row.total || 0);
   const pagado = Number(row.amount_paid || 0);
 
   return {
     folio: `ENC-${row.id}`,
-    fecha: formatTicketDateTime(row.created_at),
+    fecha: formatDateTime(row.created_at),
     empleado: row.employee || "-",
     cliente: row.client_name || "-",
 
@@ -503,7 +372,7 @@ function fillEncargoTicket(ticketData) {
 
 function printEncargoTicket() {
   if (!lastEncargoTicketData) {
-    encargoDetailStatus.textContent = "Primero abre un encargo para imprimir su ticket.";
+    encargoDetailStatus.textContent = "Primero abre un encargo para imprimir el ticket.";
     return;
   }
 
@@ -1722,12 +1591,11 @@ async function openEncargoDetail(id) {
     return;
   }
 
-currentEncargoRow = data;
-lastEncargoTicketData = buildTicketFromEncargo(data);
+  lastEncargoTicketData = buildTicketFromEncargo(data);
 
-if (printEncargoTicketBtn) {
-  printEncargoTicketBtn.disabled = false;
-}
+  if (printEncargoTicketBtn) {
+    printEncargoTicketBtn.disabled = false;
+  }
 
   resetEncargoDetailFields();
 
@@ -1870,7 +1738,6 @@ if (closeEncargoDetailBtn) {
     currentEncargoId = null;
     currentEncargoTotal = 0;
     currentEncargoPaid = 0;
-    currentEncargoRow = null;
     lastEncargoTicketData = null;
     encargoDetailStatus.textContent = "";
 
