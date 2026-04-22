@@ -210,6 +210,25 @@ async function printEncargoById(id) {
   printTicket();
 }
 
+async function printEncargoById(id) {
+  ensureSupabase();
+
+  const { data, error } = await supabaseClient
+    .from("encargos")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error(error);
+    alert(`Error al cargar encargo: ${error.message}`);
+    return;
+  }
+
+  fillEncargoTicket(data);
+  printTicket();
+}
+
 function printTicket() {
   if (!lastTicketData) {
     statusEl.textContent = "Primero registra una venta para imprimir el ticket.";
@@ -1435,7 +1454,6 @@ async function loadEncargosList() {
     </button>
   </td>
 `;
-
     encargosBody.appendChild(tr);
   }
 }
