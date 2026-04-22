@@ -202,14 +202,18 @@ function printTicket() {
         .ticketTable {
           width: 100%;
           border-collapse: collapse;
-          font-size: 11px;
+          font-size: 10px;
         }
 
-        .ticketTable th,
         .ticketTable td {
-          padding: 2px 0;
-          text-align: left;
-          vertical-align: top;
+          display: block;
+          width: 100%;
+          text-align: center;
+        }
+
+        .ticketTable tr {
+          display: block;
+          margin-bottom: 4px;
         }
 
         .ticketTable th:nth-child(2),
@@ -2135,6 +2139,7 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
+
 
 
 
