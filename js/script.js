@@ -50,14 +50,6 @@ const ticketTotal = $("#ticketTotal");
 const ticketCash = $("#ticketCash");
 const ticketChange = $("#ticketChange");
 
-const ticketCliente = $("#ticketCliente");
-const ticketKilos = $("#ticketKilos");
-const ticketServicios = $("#ticketServicios");
-const ticketEstado = $("#ticketEstado");
-const ticketAdelanto = $("#ticketAdelanto");
-const ticketResta = $("#ticketResta");
-const ticketPagoEstado = $("#ticketPagoEstado");
-
 let lastTicketData = null;
 
 // Fecha por defecto: hoy
@@ -149,84 +141,6 @@ function fillTicket(ticketData) {
   ticketTotal.textContent = money(ticketData.total || 0);
   ticketCash.textContent = money(ticketData.cash || 0);
   ticketChange.textContent = money(ticketData.change || 0);
-}
-
-function fillEncargoTicket(row) {
-  const total = Number(row.total || 0);
-  const pago = Number(row.amount_paid || 0);
-
-  const adelanto = Math.min(pago, total);
-  const resta = Math.max(total - pago, 0);
-  const cambio = pago > total ? (pago - total) : 0;
-
-  let pagoEstado = "PENDIENTE";
-  if (pago >= total) {
-    pagoEstado = "PAGADO";
-  } else if (pago > 0) {
-    pagoEstado = "ADELANTO";
-  }
-
-  ticketSaleId.textContent = `ENC-${row.id}`;
-  ticketDate.textContent = formatDateTime(row.created_at) || "-";
-  ticketEmployee.textContent = row.employee || "-";
-  ticketCliente.textContent = row.client_name || "-";
-
-  ticketKilos.textContent = `Kilos: ${Number(row.kilos || 0)} kg`;
-
-  ticketServicios.innerHTML = `
-    Lavadoras: ${Number(row.used_lavadora_16 || 0) + Number(row.used_lavadora_9 || 0) + Number(row.used_lavadora_4 || 0)}<br>
-    Secadoras: ${Number(row.used_secadora_15 || 0) + Number(row.used_secadora_30 || 0)}<br>
-    Detergente: ${Number(row.used_jabon || 0)}<br>
-    Suavizante: ${Number(row.used_suavizante || 0)}
-  `;
-
-  ticketTotal.textContent = money(total);
-  ticketAdelanto.textContent = money(adelanto);
-  ticketResta.textContent = money(resta);
-  ticketChange.textContent = money(cambio);
-
-  ticketEstado.textContent = humanDeliveredStatus(row.delivered_status);
-  ticketPagoEstado.textContent = pagoEstado;
-
-  ticketItemsBody.innerHTML = "";
-}
-
-async function printEncargoById(id) {
-  ensureSupabase();
-
-  const { data, error } = await supabaseClient
-    .from("encargos")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) {
-    console.error(error);
-    alert(`Error al cargar encargo: ${error.message}`);
-    return;
-  }
-
-  fillEncargoTicket(data);
-  printTicket();
-}
-
-async function printEncargoById(id) {
-  ensureSupabase();
-
-  const { data, error } = await supabaseClient
-    .from("encargos")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) {
-    console.error(error);
-    alert(`Error al cargar encargo: ${error.message}`);
-    return;
-  }
-
-  fillEncargoTicket(data);
-  printTicket();
 }
 
 function printTicket() {
@@ -1436,24 +1350,22 @@ async function loadEncargosList() {
     const estadoPedido = row.delivered_status || "pendiente";
 
     tr.innerHTML = `
-  <td>${row.id}</td>
-  <td>${fecha}</td>
-  <td>${row.employee || ""}</td>
-  <td>${row.client_name || ""}</td>
-  <td>${row.client_phone || ""}</td>
-  <td>${estadoPedido}</td>
-  <td>${row.payment_status || ""}</td>
-  <td>${money(row.total || 0)}</td>
-  <td>${paymentLabel(row)}</td>
-  <td style="text-align:right;">
-    <button type="button" class="addBtn" data-open-encargo="${row.id}" style="width:auto; padding:8px 10px;">
-      Abrir
-    </button>
-    <button type="button" class="ghost" data-print-encargo="${row.id}" style="width:auto; padding:8px 10px; margin-left:6px;">
-      Imprimir
-    </button>
-  </td>
-`;
+      <td>${row.id}</td>
+      <td>${fecha}</td>
+      <td>${row.employee || ""}</td>
+      <td>${row.client_name || ""}</td>
+      <td>${row.client_phone || ""}</td>
+      <td>${estadoPedido}</td>
+      <td>${row.payment_status || ""}</td>
+      <td>${money(row.total || 0)}</td>
+      <td>${paymentLabel(row)}</td>
+      <td style="text-align:right;">
+        <button type="button" class="addBtn" data-open-encargo="${row.id}" style="width:auto; padding:8px 10px;">
+          Abrir
+        </button>
+      </td>
+    `;
+
     encargosBody.appendChild(tr);
   }
 }
@@ -1605,17 +1517,10 @@ if (encargosBody) {
     const btn = e.target.closest("button");
     if (!btn) return;
 
-    const openId = btn.dataset.openEncargo;
-    if (openId) {
-      openEncargoDetail(openId);
-      return;
-    }
+    const id = btn.dataset.openEncargo;
+    if (!id) return;
 
-    const printId = btn.dataset.printEncargo;
-    if (printId) {
-      printEncargoById(printId);
-      return;
-    }
+    openEncargoDetail(id);
   });
 }
 
@@ -2232,7 +2137,6 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
-
 
 
 
