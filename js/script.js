@@ -118,14 +118,11 @@ function fillTicket(ticketData) {
 
   for (const item of ticketData.items || []) {
     const tr = document.createElement("tr");
-  
     tr.innerHTML = `
-      <td colspan="3">
-        ${cleanText(item.name)} x${item.qty}<br>
-        ${money(item.subtotal)}
-      </td>
+      <td>${cleanText(item.name)}</td>
+      <td>${item.qty}</td>
+      <td>${money(item.subtotal)}</td>
     `;
-  
     ticketItemsBody.appendChild(tr);
   }
 
@@ -2119,6 +2116,7 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
+
 
 
 
