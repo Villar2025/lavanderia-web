@@ -821,6 +821,7 @@
 
               <div class="actions">
                 <button type="button" id="saveEncargoUsageBtn" class="primary">Guardar y marcar como entregado</button>
+                <button type="button" id="printEncargoTicketBtn" class="ghost" disabled>Imprimir ticket</button>
               </div>
 
               <p id="encargoDetailStatus" class="status"></p>
@@ -885,10 +886,69 @@
       </div>
     </div>
 
+    <div id="encargoTicketPrintArea" class="ticketPrintArea" style="display:none;">
+      <div class="ticket" id="encargoTicketContent">
+        <div class="ticketCenter">
+          <strong>LAVANDERIA</strong>
+          <div>Encargo</div>
+        </div>
+    
+        <hr class="ticketLine" />
+    
+        <div><strong>Folio:</strong> <span id="encargoTicketFolio">-</span></div>
+        <div><strong>Fecha:</strong> <span id="encargoTicketDate">-</span></div>
+        <div><strong>Empleado:</strong> <span id="encargoTicketEmployee">-</span></div>
+        <div><strong>Cliente:</strong> <span id="encargoTicketClient">-</span></div>
+    
+        <hr class="ticketLine" />
+    
+        <div id="encargoTicketKilosRow">Kilos: -</div>
+        <div id="encargoTicketLavadorasRow">Lavadoras: 0</div>
+        <div id="encargoTicketSecadorasRow">Secadoras: 0</div>
+        <div id="encargoTicketJabonRow">Detergente: 0</div>
+        <div id="encargoTicketSuavizanteRow">Suavizante: 0</div>
+    
+        <hr class="ticketLine" />
+    
+        <table class="ticketTable">
+          <tbody>
+            <tr>
+              <td style="text-align:left;"><strong>TOTAL</strong></td>
+              <td style="text-align:right;" id="encargoTicketTotal">$0</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;"><strong>ADELANTO</strong></td>
+              <td style="text-align:right;" id="encargoTicketAdelanto">$0</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;"><strong>RESTA</strong></td>
+              <td style="text-align:right;" id="encargoTicketResta">$0</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;"><strong>CAMBIO</strong></td>
+              <td style="text-align:right;" id="encargoTicketCambio">$0</td>
+            </tr>
+          </tbody>
+        </table>
+    
+        <hr class="ticketLine" />
+    
+        <div><strong>Estado:</strong> <span id="encargoTicketEstado">-</span></div>
+        <div><strong>Pago:</strong> <span id="encargoTicketPago">-</span></div>
+    
+        <hr class="ticketLine" />
+    
+        <div class="ticketCenter">
+          <div>Gracias por su preferencia</div>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/script.js"></script>
   </body>
 </html>
+
 
 
 
