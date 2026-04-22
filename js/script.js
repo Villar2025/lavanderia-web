@@ -40,6 +40,17 @@ const changeEl = $("#change");
 const statusEl = $("#status");
 const newBtn = $("#newBtn");
 const saveBtn = $("#saveBtn");
+const printTicketBtn = $("#printTicketBtn");
+
+const ticketSaleId = $("#ticketSaleId");
+const ticketDate = $("#ticketDate");
+const ticketEmployee = $("#ticketEmployee");
+const ticketItemsBody = $("#ticketItemsBody");
+const ticketTotal = $("#ticketTotal");
+const ticketCash = $("#ticketCash");
+const ticketChange = $("#ticketChange");
+
+let lastTicketData = null;
 
 // Fecha por defecto: hoy
 (function setDefaultDate() {
@@ -57,6 +68,206 @@ function wholeMoney(n) {
 function money(n) {
   const val = wholeMoney(n);
   return `$${val.toLocaleString("es-MX")}`;
+}
+
+function cleanText(str) {
+  return String(str || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ñ/g, "n")
+    .replace(/Ñ/g, "N");
+}
+
+function formatNowForTicket() {
+  const now = new Date();
+
+  return now.toLocaleString("es-MX", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function buildTicketFromSale(saleId, salePayload) {
+  return {
+    id: saleId,
+    date: formatNowForTicket(),
+    employee: salePayload.employee,
+    items: salePayload.items.map((item) => ({
+      name: item.name,
+      qty: item.qty,
+      subtotal: item.subtotal
+    })),
+    total: salePayload.total,
+    cash: salePayload.cash,
+    change: salePayload.change
+  };
+}
+
+function fillTicket(ticketData) {
+  if (!ticketData) return;
+
+  ticketSaleId.textContent = ticketData.id ?? "-";
+  ticketDate.textContent = ticketData.date ?? "-";
+  ticketEmployee.textContent = cleanText(ticketData.employee ?? "-");
+
+  ticketItemsBody.innerHTML = "";
+
+  for (const item of ticketData.items || []) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${cleanText(item.name)}</td>
+      <td>${item.qty}</td>
+      <td>${money(item.subtotal)}</td>
+    `;
+    ticketItemsBody.appendChild(tr);
+  }
+
+  ticketTotal.textContent = money(ticketData.total || 0);
+  ticketCash.textContent = money(ticketData.cash || 0);
+  ticketChange.textContent = money(ticketData.change || 0);
+}
+
+function printTicket() {
+  if (!lastTicketData) {
+    statusEl.textContent = "Primero registra una venta para imprimir el ticket.";
+    return;
+  }
+
+  fillTicket(lastTicketData);
+
+  const ticketHtml = document.getElementById("ticketContent").innerHTML;
+
+  const printWindow = window.open("", "_blank", "width=340,height=700");
+
+  if (!printWindow) {
+    statusEl.textContent = "No se pudo abrir la ventana del ticket.";
+    return;
+  }
+
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Vista previa del ticket</title>
+      <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+          color: #000000;
+          font-family: Arial, sans-serif;
+        }
+
+        .ticket {
+          width: 58mm;
+          max-width: 58mm;
+          padding: 6px;
+          box-sizing: border-box;
+          font-size: 12px;
+          line-height: 1.35;
+          color: #000;
+          background: #fff;
+          margin: 0 auto;
+        }
+
+        .ticketCenter {
+          text-align: center;
+        }
+
+        .ticketLine {
+          border: none;
+          border-top: 1px dashed #000;
+          margin: 8px 0;
+        }
+
+        .ticketTable {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 11px;
+        }
+
+        .ticketTable th,
+        .ticketTable td {
+          padding: 2px 0;
+          text-align: left;
+          vertical-align: top;
+        }
+
+        .ticketTable th:nth-child(2),
+        .ticketTable td:nth-child(2),
+        .ticketTable th:nth-child(3),
+        .ticketTable td:nth-child(3) {
+          text-align: right;
+        }
+
+        .ticketRow {
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          margin: 2px 0;
+        }
+
+        .printBar {
+          position: sticky;
+          top: 0;
+          background: #fff;
+          border-bottom: 1px solid #ccc;
+          padding: 10px;
+          display: flex;
+          gap: 10px;
+          justify-content: center;
+        }
+
+        .printBtn {
+          padding: 8px 14px;
+          border: 1px solid #000;
+          background: #fff;
+          cursor: pointer;
+        }
+
+        @media print {
+          .printBar {
+            display: none;
+          }
+
+          html, body {
+            width: 58mm;
+            margin: 0;
+            padding: 0;
+          }
+
+          .ticket {
+            width: 58mm;
+            max-width: 58mm;
+            margin: 0;
+            padding: 6px;
+          }
+
+          @page {
+            size: 58mm auto;
+            margin: 0;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="printBar">
+        <button class="printBtn" onclick="window.print()">Imprimir</button>
+      </div>
+
+      <div class="ticket">
+        ${ticketHtml}
+      </div>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
 }
 
 function localDateStartISO(dateStr) {
@@ -335,10 +546,13 @@ saleForm.addEventListener("submit", async (e) => {
   try {
     const res = await saveToSupabase(salePayload);
     if (!res.ok) throw new Error(res.error || "No se pudo guardar.");
-
+  
     lastSaved = res.id;
+    lastTicketData = buildTicketFromSale(res.id, salePayload);
+  
     statusEl.textContent = `✅ Venta registrada (ID: ${res.id}).`;
     newBtn.disabled = false;
+    if (printTicketBtn) printTicketBtn.disabled = false;
   } catch (err) {
     statusEl.textContent = `❌ Error: ${err.message || "No se pudo registrar"}`;
   } finally {
@@ -350,13 +564,23 @@ saleForm.addEventListener("submit", async (e) => {
 newBtn.addEventListener("click", () => {
   cart = [];
   lastSaved = null;
+  lastTicketData = null; // 👈 IMPORTANTE
 
   cashEl.value = "";
   statusEl.textContent = "";
 
   newBtn.disabled = true;
+
+  if (printTicketBtn) {
+    printTicketBtn.disabled = true; // 👈 IMPORTANTE
+  }
+
   render();
 });
+
+if (printTicketBtn) {
+  printTicketBtn.addEventListener("click", printTicket);
+}
 
 // init
 render();
@@ -1892,4 +2116,6 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
+
+
 
