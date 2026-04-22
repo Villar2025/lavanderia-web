@@ -176,9 +176,9 @@ function printTicket() {
 
   const ticketHtml = document.getElementById("ticketContent").innerHTML;
 
-  const win = openTicketPrintWindow(ticketHtml, "Vista previa del ticket");
+  const printWindow = window.open("", "_blank", "width=340,height=700");
 
-  if (!win) {
+  if (!printWindow) {
     statusEl.textContent = "No se pudo abrir la ventana del ticket.";
     return;
   }
@@ -510,11 +510,118 @@ function printEncargoTicket() {
   fillEncargoTicket(lastEncargoTicketData);
 
   const ticketHtml = document.getElementById("encargoTicketContent").innerHTML;
-  const win = openTicketPrintWindow(ticketHtml, "Ticket de encargo");
 
-  if (!win) {
+  const printWindow = window.open("", "_blank", "width=340,height=700");
+
+  if (!printWindow) {
     encargoDetailStatus.textContent = "No se pudo abrir la ventana del ticket.";
+    return;
   }
+
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Ticket de encargo</title>
+      <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+          color: #000000;
+          font-family: Arial, sans-serif;
+        }
+
+        .ticket {
+          width: 58mm;
+          max-width: 58mm;
+          padding: 6px;
+          box-sizing: border-box;
+          font-size: 12px;
+          line-height: 1.35;
+          color: #000;
+          background: #fff;
+          margin: 0 auto;
+        }
+
+        .ticketCenter {
+          text-align: center;
+        }
+
+        .ticketLine {
+          border: none;
+          border-top: 1px dashed #000;
+          margin: 8px 0;
+        }
+
+        .ticketTable {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 10px;
+        }
+
+        .ticketTable td,
+        .ticketTable th {
+          padding: 2px 0;
+        }
+
+        .printBar {
+          position: sticky;
+          top: 0;
+          background: #fff;
+          border-bottom: 1px solid #ccc;
+          padding: 10px;
+          display: flex;
+          gap: 10px;
+          justify-content: center;
+        }
+
+        .printBtn {
+          padding: 8px 14px;
+          border: 1px solid #000;
+          background: #fff;
+          cursor: pointer;
+        }
+
+        @media print {
+          .printBar {
+            display: none;
+          }
+
+          html, body {
+            width: 58mm;
+            margin: 0;
+            padding: 0;
+          }
+
+          .ticket {
+            width: 58mm;
+            max-width: 58mm;
+            margin: 0;
+            padding: 6px;
+          }
+
+          @page {
+            size: 58mm auto;
+            margin: 0;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="printBar">
+        <button class="printBtn" onclick="window.print()">Imprimir</button>
+      </div>
+
+      <div class="ticket">
+        ${ticketHtml}
+      </div>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
 }
 
 function localDateStartISO(dateStr) {
