@@ -838,52 +838,47 @@
       <div class="ticket" id="ticketContent">
         <div class="ticketCenter">
           <strong>LAVANDERÍA</strong>
-          <div>Encargo</div>
+          <div>Ticket de venta</div>
         </div>
-        
+    
         <hr class="ticketLine" />
-        
+    
         <div><strong>Folio:</strong> <span id="ticketSaleId">-</span></div>
         <div><strong>Fecha:</strong> <span id="ticketDate">-</span></div>
         <div><strong>Empleado:</strong> <span id="ticketEmployee">-</span></div>
-        <div><strong>Cliente:</strong> <span id="ticketCliente">-</span></div>
-        
+    
         <hr class="ticketLine" />
-        
-        <div id="ticketKilos">Kilos: -</div>
-        <div id="ticketServicios"></div>
-        
+    
+        <table class="ticketTable">
+          <thead>
+            <tr>
+              <th>Prod.</th>
+              <th>Cant.</th>
+              <th>Imp.</th>
+            </tr>
+          </thead>
+          <tbody id="ticketItemsBody"></tbody>
+        </table>
+    
         <hr class="ticketLine" />
-        
+    
         <div class="ticketTotalBlock">
           TOTAL
           <div id="ticketTotal">$0</div>
         </div>
         
         <div class="ticketTotalBlock">
-          ADELANTO
-          <div id="ticketAdelanto">$0</div>
-        </div>
-        
-        <div class="ticketTotalBlock">
-          RESTA
-          <div id="ticketResta">$0</div>
+          EFECTIVO
+          <div id="ticketCash">$0</div>
         </div>
         
         <div class="ticketTotalBlock">
           CAMBIO
           <div id="ticketChange">$0</div>
         </div>
-        
+    
         <hr class="ticketLine" />
-        
-        <div style="text-align:center;">
-          Estado: <span id="ticketEstado">-</span><br>
-          Pago: <span id="ticketPagoEstado">-</span>
-        </div>
-        
-        <hr class="ticketLine" />
-        
+    
         <div class="ticketCenter">
           <div>Gracias por su compra</div>
         </div>
