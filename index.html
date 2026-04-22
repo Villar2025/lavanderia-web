@@ -837,8 +837,8 @@
     <div id="ticketPrintArea" class="ticketPrintArea" style="display:none;">
       <div class="ticket" id="ticketContent">
         <div class="ticketCenter">
-          <strong>LAVANDERIA</strong>
-          <div id="ticketTitle">Ticket de venta</div>
+          <strong>LAVANDERÍA</strong>
+          <div>Ticket de venta</div>
         </div>
     
         <hr class="ticketLine" />
@@ -846,72 +846,41 @@
         <div><strong>Folio:</strong> <span id="ticketSaleId">-</span></div>
         <div><strong>Fecha:</strong> <span id="ticketDate">-</span></div>
         <div><strong>Empleado:</strong> <span id="ticketEmployee">-</span></div>
-        <div id="ticketClientRow" style="display:none;"><strong>Cliente:</strong> <span id="ticketCliente">-</span></div>
-    
-        <div id="ticketEncargoServicesSection" style="display:none;">
-          <hr class="ticketLine" />
-    
-          <div><strong>Kilos:</strong> <span id="ticketKilos">0 kg</span></div>
-          <br>
-          <div><strong>Lavadoras:</strong> <span id="ticketLavadoras">0</span></div>
-          <div><strong>Secadoras:</strong> <span id="ticketSecadoras">0</span></div>
-          <br>
-          <div><strong>Detergente:</strong> <span id="ticketDetergente">0</span></div>
-          <div><strong>Suavizante:</strong> <span id="ticketSuavizante">0</span></div>
-        </div>
-    
-        <div id="ticketSaleItemsSection">
-          <hr class="ticketLine" />
-    
-          <table class="ticketTable">
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th>Cant.</th>
-                <th>Imp.</th>
-              </tr>
-            </thead>
-            <tbody id="ticketItemsBody"></tbody>
-          </table>
-        </div>
     
         <hr class="ticketLine" />
     
-        <div class="ticketRow">
-          <span><strong>TOTAL</strong></span>
-          <strong id="ticketTotal">$0</strong>
-        </div>
+        <table class="ticketTable">
+          <thead>
+            <tr>
+              <th>Prod.</th>
+              <th>Cant.</th>
+              <th>Imp.</th>
+            </tr>
+          </thead>
+          <tbody id="ticketItemsBody"></tbody>
+        </table>
     
-        <div class="ticketRow" id="ticketCashRow">
-          <span><strong>EFECTIVO</strong></span>
-          <strong id="ticketCash">$0</strong>
-        </div>
+        <hr class="ticketLine" />
     
-        <div class="ticketRow" id="ticketAdelantoRow" style="display:none;">
-          <span><strong>ADELANTO</strong></span>
-          <strong id="ticketAdelanto">$0</strong>
+        <div class="ticketTotalBlock">
+          TOTAL
+          <div id="ticketTotal">$0</div>
         </div>
-    
-        <div class="ticketRow" id="ticketRestaRow" style="display:none;">
-          <span><strong>RESTA</strong></span>
-          <strong id="ticketResta">$0</strong>
+        
+        <div class="ticketTotalBlock">
+          EFECTIVO
+          <div id="ticketCash">$0</div>
         </div>
-    
-        <div class="ticketRow" id="ticketChangeRow">
-          <span><strong>CAMBIO</strong></span>
-          <strong id="ticketChange">$0</strong>
-        </div>
-    
-        <div id="ticketStatusSection" style="display:none;">
-          <hr class="ticketLine" />
-          <div><strong>Estado:</strong> <span id="ticketEstado">-</span></div>
-          <div><strong>Pago:</strong> <span id="ticketPagoEstado">-</span></div>
+        
+        <div class="ticketTotalBlock">
+          CAMBIO
+          <div id="ticketChange">$0</div>
         </div>
     
         <hr class="ticketLine" />
     
         <div class="ticketCenter">
-          <div>Gracias por su preferencia</div>
+          <div>Gracias por su compra</div>
         </div>
       </div>
     </div>
