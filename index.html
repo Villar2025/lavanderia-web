@@ -171,7 +171,6 @@
             <div class="actions">
               <button id="saveBtn" type="submit" class="primary">Registrar venta</button>
               <button id="newBtn" type="button" class="ghost" disabled>Nueva venta</button>
-              <button id="printTicketBtn" type="button" class="ghost" disabled>Imprimir ticket</button>
             </div>
 
             <p id="status" class="status" role="status" aria-live="polite"></p>
@@ -834,61 +833,9 @@
       </footer>
     </div>
 
-    <div id="ticketPrintArea" class="ticketPrintArea" style="display:none;">
-      <div class="ticket" id="ticketContent">
-        <div class="ticketCenter">
-          <strong>LAVANDERÍA</strong>
-          <div>Ticket de venta</div>
-        </div>
-    
-        <hr class="ticketLine" />
-    
-        <div><strong>Folio:</strong> <span id="ticketSaleId">-</span></div>
-        <div><strong>Fecha:</strong> <span id="ticketDate">-</span></div>
-        <div><strong>Empleado:</strong> <span id="ticketEmployee">-</span></div>
-    
-        <hr class="ticketLine" />
-    
-        <table class="ticketTable">
-          <thead>
-            <tr>
-              <th>Prod.</th>
-              <th>Cant.</th>
-              <th>Imp.</th>
-            </tr>
-          </thead>
-          <tbody id="ticketItemsBody"></tbody>
-        </table>
-    
-        <hr class="ticketLine" />
-    
-        <div class="ticketTotalBlock">
-          TOTAL
-          <div id="ticketTotal">$0</div>
-        </div>
-        
-        <div class="ticketTotalBlock">
-          EFECTIVO
-          <div id="ticketCash">$0</div>
-        </div>
-        
-        <div class="ticketTotalBlock">
-          CAMBIO
-          <div id="ticketChange">$0</div>
-        </div>
-    
-        <hr class="ticketLine" />
-    
-        <div class="ticketCenter">
-          <div>Gracias por su compra</div>
-        </div>
-      </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/script.js"></script>
   </body>
 </html>
-
 
 
