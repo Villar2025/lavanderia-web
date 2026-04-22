@@ -42,13 +42,40 @@ const newBtn = $("#newBtn");
 const saveBtn = $("#saveBtn");
 const printTicketBtn = $("#printTicketBtn");
 
+const ticketTitle = $("#ticketTitle");
 const ticketSaleId = $("#ticketSaleId");
 const ticketDate = $("#ticketDate");
 const ticketEmployee = $("#ticketEmployee");
+const ticketCliente = $("#ticketCliente");
+
+const ticketClientRow = $("#ticketClientRow");
+const ticketSaleItemsSection = $("#ticketSaleItemsSection");
+const ticketEncargoServicesSection = $("#ticketEncargoServicesSection");
+const ticketStatusSection = $("#ticketStatusSection");
+
 const ticketItemsBody = $("#ticketItemsBody");
+
+const ticketKilos = $("#ticketKilos");
+const ticketLavadoras = $("#ticketLavadoras");
+const ticketSecadoras = $("#ticketSecadoras");
+const ticketDetergente = $("#ticketDetergente");
+const ticketSuavizante = $("#ticketSuavizante");
+
 const ticketTotal = $("#ticketTotal");
 const ticketCash = $("#ticketCash");
+const ticketCashRow = $("#ticketCashRow");
+
+const ticketAdelanto = $("#ticketAdelanto");
+const ticketAdelantoRow = $("#ticketAdelantoRow");
+
+const ticketResta = $("#ticketResta");
+const ticketRestaRow = $("#ticketRestaRow");
+
 const ticketChange = $("#ticketChange");
+const ticketChangeRow = $("#ticketChangeRow");
+
+const ticketEstado = $("#ticketEstado");
+const ticketPagoEstado = $("#ticketPagoEstado");
 
 let lastTicketData = null;
 
@@ -110,6 +137,18 @@ function buildTicketFromSale(saleId, salePayload) {
 function fillTicket(ticketData) {
   if (!ticketData) return;
 
+  ticketTitle.textContent = "Ticket de venta";
+
+  ticketClientRow.style.display = "none";
+  ticketEncargoServicesSection.style.display = "none";
+  ticketStatusSection.style.display = "none";
+  ticketSaleItemsSection.style.display = "block";
+
+  ticketCashRow.style.display = "flex";
+  ticketAdelantoRow.style.display = "none";
+  ticketRestaRow.style.display = "none";
+  ticketChangeRow.style.display = "flex";
+
   ticketSaleId.textContent = ticketData.id ?? "-";
   ticketDate.textContent = ticketData.date ?? "-";
   ticketEmployee.textContent = cleanText(ticketData.employee ?? "-");
@@ -118,7 +157,7 @@ function fillTicket(ticketData) {
 
   for (const item of ticketData.items || []) {
     const tr = document.createElement("tr");
-  
+
     const shortName = cleanText(item.name)
       .replace("Secadora 9 kg", "Sec. 9kg")
       .replace("Lavadora 16 kg", "Lav. 16kg")
@@ -127,14 +166,14 @@ function fillTicket(ticketData) {
       .replace("Solo secado", "Secado")
       .replace("1 medida de ", "")
       .replace("Suavizante (botella)", "Suavizante");
-  
-      tr.innerHTML = `
-        <td colspan="3" style="text-align:left;">
-          ${shortName} x${item.qty}<br>
-          ${money(item.subtotal)}
-        </td>
-      `;
-  
+
+    tr.innerHTML = `
+      <td colspan="3" style="text-align:left;">
+        ${shortName} x${item.qty}<br>
+        ${money(item.subtotal)}
+      </td>
+    `;
+
     ticketItemsBody.appendChild(tr);
   }
 
@@ -143,14 +182,84 @@ function fillTicket(ticketData) {
   ticketChange.textContent = money(ticketData.change || 0);
 }
 
-function printTicket() {
-  if (!lastTicketData) {
-    statusEl.textContent = "Primero registra una venta para imprimir el ticket.";
+function fillEncargoTicket(row) {
+  const total = Number(row.total || 0);
+  const pagado = Number(row.amount_paid || 0);
+
+  const adelanto = Math.min(pagado, total);
+  const resta = Math.max(total - pagado, 0);
+  const cambio = Math.max(pagado - total, 0);
+
+  let pagoEstado = "PENDIENTE";
+  if (pagado >= total && total > 0) {
+    pagoEstado = "PAGADO";
+  } else if (pagado > 0) {
+    pagoEstado = "ADELANTO";
+  }
+
+  const lavadoras =
+    Number(row.used_lavadora_16 || 0) +
+    Number(row.used_lavadora_9 || 0) +
+    Number(row.used_lavadora_4 || 0);
+
+  const secadoras =
+    Number(row.used_secadora_15 || 0) +
+    Number(row.used_secadora_30 || 0);
+
+  ticketTitle.textContent = "Encargo";
+
+  ticketClientRow.style.display = "block";
+  ticketEncargoServicesSection.style.display = "block";
+  ticketStatusSection.style.display = "block";
+  ticketSaleItemsSection.style.display = "none";
+
+  ticketCashRow.style.display = "none";
+  ticketAdelantoRow.style.display = "flex";
+  ticketRestaRow.style.display = "flex";
+  ticketChangeRow.style.display = "flex";
+
+  ticketItemsBody.innerHTML = "";
+
+  ticketSaleId.textContent = `ENC-${row.id}`;
+  ticketDate.textContent = formatDateTime(row.created_at) || "-";
+  ticketEmployee.textContent = row.employee || "-";
+  ticketCliente.textContent = row.client_name || "-";
+
+  ticketKilos.textContent = `${Number(row.kilos || 0)} kg`;
+  ticketLavadoras.textContent = lavadoras;
+  ticketSecadoras.textContent = secadoras;
+  ticketDetergente.textContent = Number(row.used_jabon || 0);
+  ticketSuavizante.textContent = Number(row.used_suavizante || 0);
+
+  ticketTotal.textContent = money(total);
+  ticketAdelanto.textContent = money(adelanto);
+  ticketResta.textContent = money(resta);
+  ticketChange.textContent = money(cambio);
+
+  ticketEstado.textContent = humanDeliveredStatus(row.delivered_status).toUpperCase();
+  ticketPagoEstado.textContent = pagoEstado;
+}
+
+async function printEncargoById(id) {
+  ensureSupabase();
+
+  const { data, error } = await supabaseClient
+    .from("encargos")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error(error);
+    alert(`Error al cargar encargo: ${error.message}`);
     return;
   }
 
-  fillTicket(lastTicketData);
+  fillEncargoTicket(data);
+  printTicket();
+}
 
+function openTicketPrintWindow() {
   const ticketHtml = document.getElementById("ticketContent").innerHTML;
 
   const printWindow = window.open("", "_blank", "width=340,height=700");
@@ -206,7 +315,7 @@ function printTicket() {
         .ticketTable td {
           display: block;
           width: 100%;
-          text-align: center;
+          text-align: left;
         }
 
         .ticketTable tr {
@@ -214,23 +323,12 @@ function printTicket() {
           margin-bottom: 4px;
         }
 
-        .ticketTable th:nth-child(2),
-        .ticketTable td:nth-child(2),
-        .ticketTable th:nth-child(3),
-        .ticketTable td:nth-child(3) {
-          text-align: right;
-        }
-
         .ticketRow {
-          display: block;
-          text-align: center;
-          font-size: 7px;
-          margin: 1px 0;
-         }
-
-        .ticketRow strong {
-          display: block;
-          font-size: 8px;
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          font-size: 12px;
+          margin: 2px 0;
         }
 
         .printBar {
@@ -289,6 +387,16 @@ function printTicket() {
   `);
 
   printWindow.document.close();
+}
+
+function printTicket() {
+  if (!lastTicketData) {
+    statusEl.textContent = "Primero registra una venta para imprimir el ticket.";
+    return;
+  }
+
+  fillTicket(lastTicketData);
+  openTicketPrintWindow();
 }
 
 function localDateStartISO(dateStr) {
@@ -1350,22 +1458,26 @@ async function loadEncargosList() {
     const estadoPedido = row.delivered_status || "pendiente";
 
     tr.innerHTML = `
-      <td>${row.id}</td>
-      <td>${fecha}</td>
-      <td>${row.employee || ""}</td>
-      <td>${row.client_name || ""}</td>
-      <td>${row.client_phone || ""}</td>
-      <td>${estadoPedido}</td>
-      <td>${row.payment_status || ""}</td>
-      <td>${money(row.total || 0)}</td>
-      <td>${paymentLabel(row)}</td>
-      <td style="text-align:right;">
-        <button type="button" class="addBtn" data-open-encargo="${row.id}" style="width:auto; padding:8px 10px;">
-          Abrir
-        </button>
-      </td>
-    `;
-
+  <td>${row.id}</td>
+  <td>${fecha}</td>
+  <td>${row.employee || ""}</td>
+  <td>${row.client_name || ""}</td>
+  <td>${row.client_phone || ""}</td>
+  <td>${estadoPedido}</td>
+  <td>${row.payment_status || ""}</td>
+  <td>${money(row.total || 0)}</td>
+  <td>${paymentLabel(row)}</td>
+  <td style="text-align:right;">
+    <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+      <button type="button" class="addBtn" data-open-encargo="${row.id}" style="width:auto; padding:8px 10px;">
+        Abrir
+      </button>
+      <button type="button" class="ghost" data-print-encargo="${row.id}" style="width:auto; padding:8px 10px;">
+        Imprimir
+      </button>
+    </div>
+  </td>
+`;
     encargosBody.appendChild(tr);
   }
 }
@@ -1517,10 +1629,17 @@ if (encargosBody) {
     const btn = e.target.closest("button");
     if (!btn) return;
 
-    const id = btn.dataset.openEncargo;
-    if (!id) return;
+    const openId = btn.dataset.openEncargo;
+    if (openId) {
+      openEncargoDetail(openId);
+      return;
+    }
 
-    openEncargoDetail(id);
+    const printId = btn.dataset.printEncargo;
+    if (printId) {
+      printEncargoById(printId);
+      return;
+    }
   });
 }
 
