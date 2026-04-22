@@ -118,11 +118,22 @@ function fillTicket(ticketData) {
 
   for (const item of ticketData.items || []) {
     const tr = document.createElement("tr");
+  
+    const shortName = cleanText(item.name)
+      .replace("Secadora 9 kg", "Sec. 9kg")
+      .replace("Lavadora 16 kg", "Lav. 16kg")
+      .replace("Lavadora 9 kg", "Lav. 9kg")
+      .replace("Lavadora 4 kg", "Lav. 4kg")
+      .replace("Solo secado", "Secado")
+      .replace("1 medida de ", "")
+      .replace("Suavizante (botella)", "Suavizante");
+  
     tr.innerHTML = `
-      <td>${cleanText(item.name)}</td>
+      <td>${shortName}</td>
       <td>${item.qty}</td>
       <td>${money(item.subtotal)}</td>
     `;
+  
     ticketItemsBody.appendChild(tr);
   }
 
@@ -2116,6 +2127,8 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
+
+
 
 
 
