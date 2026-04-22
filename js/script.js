@@ -128,10 +128,13 @@ function fillTicket(ticketData) {
       .replace("1 medida de ", "")
       .replace("Suavizante (botella)", "Suavizante");
   
-    tr.innerHTML = `
-      <td>${shortName}</td>
-      <td>${item.qty}</td>
-      <td>${money(item.subtotal)}</td>
+      tr.innerHTML = `
+      <td colspan="3" style="text-align:center;">
+        ${shortName} x${item.qty}<br>
+        <span style="display:block; margin-top:2px;">
+          ${money(item.subtotal)}
+        </span>
+      </td>
     `;
   
     ticketItemsBody.appendChild(tr);
@@ -2132,6 +2135,7 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
+
 
 
 
