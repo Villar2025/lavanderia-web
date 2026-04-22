@@ -129,13 +129,11 @@ function fillTicket(ticketData) {
       .replace("Suavizante (botella)", "Suavizante");
   
       tr.innerHTML = `
-      <td colspan="3" style="text-align:center;">
-        ${shortName} x${item.qty}<br>
-        <span style="display:block; margin-top:2px;">
+        <td colspan="3" style="text-align:left;">
+          ${shortName} x${item.qty}<br>
           ${money(item.subtotal)}
-        </span>
-      </td>
-    `;
+        </td>
+      `;
   
     ticketItemsBody.appendChild(tr);
   }
