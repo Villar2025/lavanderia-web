@@ -217,10 +217,15 @@ function printTicket() {
         }
 
         .ticketRow {
-          display: flex;
-          justify-content: space-between;
-          gap: 10px;
-          margin: 2px 0;
+          display: block;
+          text-align: center;
+          font-size: 7px;
+          margin: 1px 0;
+         }
+
+        .ticketRow strong {
+          display: block;
+          font-size: 8px;
         }
 
         .printBar {
@@ -2127,6 +2132,7 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
+
 
 
 
