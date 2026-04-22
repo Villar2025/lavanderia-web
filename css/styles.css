@@ -274,12 +274,10 @@ select option {
 .ticket {
   width: 58mm;
   max-width: 58mm;
-  background: #fff;
-  color: #000;
-  padding: 8px;
-  font-family: Arial, sans-serif;
-  font-size: 12px;
-  line-height: 1.35;
+  padding: 4px;
+  font-family: monospace;
+  font-size: 10px; 
+  line-height: 1.2;
 }
 
 .ticketCenter {
@@ -295,7 +293,7 @@ select option {
 .ticketTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 9px;
 }
 
 .ticketTable th,
@@ -303,6 +301,10 @@ select option {
   padding: 2px 0;
   text-align: left;
   vertical-align: top;
+}
+
+.ticketTable td {
+  word-break: break-word;
 }
 
 .ticketTable th:nth-child(2),
@@ -316,7 +318,7 @@ select option {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin: 2px 0;
+  margin: 4px 0;
 }
 
 @media print {
@@ -325,3 +327,6 @@ select option {
     margin: 0;
   }
 }
+
+
+
