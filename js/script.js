@@ -1596,6 +1596,7 @@ if (encargosBody) {
     const printId = btn.dataset.printEncargo;
     if (printId) {
       printEncargoById(printId);
+      return;
     }
   });
 }
@@ -2213,6 +2214,8 @@ if (clearUsageFiltersBtn) {
 if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
+
+
 
 
 
