@@ -255,7 +255,7 @@ button:disabled {
   display: block;
 }
 
-/* 🔥 Arreglar color de selects */
+/* Arreglar color de selects */
 select {
   color: #000; /* texto negro */
   background-color: #fff; /* fondo blanco */
@@ -267,9 +267,9 @@ select option {
   background-color: #fff;
 }
 
-
-
-
+.ticketPrintArea {
+  display: none !important;
+}
 
 
 
