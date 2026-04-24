@@ -41,6 +41,16 @@ const statusEl = $("#status");
 const newBtn = $("#newBtn");
 const saveBtn = $("#saveBtn");
 
+const printTicketBtn = $("#printTicketBtn");
+
+const ticketSaleId = $("#ticketSaleId");
+const ticketDate = $("#ticketDate");
+const ticketEmployee = $("#ticketEmployee");
+const ticketItemsBody = $("#ticketItemsBody");
+const ticketTotal = $("#ticketTotal");
+const ticketCash = $("#ticketCash");
+const ticketChange = $("#ticketChange");
+
 // Fecha por defecto: hoy
 (function setDefaultDate() {
   const today = new Date();
@@ -336,9 +346,18 @@ saleForm.addEventListener("submit", async (e) => {
     const res = await saveToSupabase(salePayload);
     if (!res.ok) throw new Error(res.error || "No se pudo guardar.");
 
-    lastSaved = res.id;
+    lastSaved = {
+      id: res.id,
+      employee,
+      date,
+      items: salePayload.items,
+      total,
+      cash,
+      change,
+    };
     statusEl.textContent = `✅ Venta registrada (ID: ${res.id}).`;
     newBtn.disabled = false;
+    printTicketBtn.disabled = false;
   } catch (err) {
     statusEl.textContent = `❌ Error: ${err.message || "No se pudo registrar"}`;
   } finally {
@@ -355,6 +374,8 @@ newBtn.addEventListener("click", () => {
   statusEl.textContent = "";
 
   newBtn.disabled = true;
+  printTicketBtn.disabled = true;
+
   render();
 });
 
@@ -677,7 +698,8 @@ function num(val) {
 
 function calcEncargoTotal() {
   const kilos = num(encargoKilos.value);
-  const kilosSubtotal = kilos * 26;
+  const kilosBase = kilos > 0 && kilos < 4 ? 4 : kilos;
+  const kilosSubtotal = kilosBase * 26;
 
   const edredonSubtotal =
     num(edredonIndividual.value) * 95 +
@@ -788,7 +810,8 @@ encargoForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  const kilosSubtotal = wholeMoney(kilos * 26);
+  const kilosBase = kilos > 0 && kilos < 4 ? 4 : kilos;
+  const kilosSubtotal = wholeMoney(kilosBase * 26);
   const mantelesSubtotal = wholeMoney(num(mantelesKilos.value) * 55);
   const almohadasSubtotal = wholeMoney(almohadasPeluchesPrice.value);
 
@@ -1063,6 +1086,7 @@ async function loadEncargosList() {
       employee,
       client_name,
       client_phone,
+      kilos,
       payment_status,
       amount_paid,
       total,
@@ -1105,7 +1129,7 @@ async function loadEncargosList() {
     const estadoPedido = row.delivered_status || "pendiente";
 
     tr.innerHTML = `
-      <td>${row.id}</td>
+      <td>${row.kilos !== null && row.kilos !== undefined ? row.kilos + " kg" : "-"}</td>
       <td>${fecha}</td>
       <td>${row.employee || ""}</td>
       <td>${row.client_name || ""}</td>
@@ -1117,6 +1141,9 @@ async function loadEncargosList() {
       <td style="text-align:right;">
         <button type="button" class="addBtn" data-open-encargo="${row.id}" style="width:auto; padding:8px 10px;">
           Abrir
+        </button>
+        <button type="button" class="ghost printEncargoRowBtn" data-print-encargo="${row.id}" style="width:auto; padding:8px 10px;">
+          Imprimir ticket
         </button>
       </td>
     `;
@@ -1272,10 +1299,17 @@ if (encargosBody) {
     const btn = e.target.closest("button");
     if (!btn) return;
 
-    const id = btn.dataset.openEncargo;
-    if (!id) return;
+    const openId = btn.dataset.openEncargo;
+    if (openId) {
+      openEncargoDetail(openId);
+      return;
+    }
 
-    openEncargoDetail(id);
+    const printId = btn.dataset.printEncargo;
+    if (printId) {
+      printEncargoTicket(printId);
+      return;
+    }
   });
 }
 
@@ -1452,6 +1486,7 @@ async function loadViewEncargos() {
       employee,
       client_name,
       client_phone,
+      kilos,
       payment_status,
       amount_paid,
       total,
@@ -1893,7 +1928,286 @@ if (deleteAllDataBtn) {
   deleteAllDataBtn.addEventListener("click", deleteAllDataExceptPending);
 }
 
+function fillSaleTicket() {
+  if (!lastSaved) {
+    statusEl.textContent = "Primero registra una venta.";
+    return false;
+  }
 
+  ticketSaleId.textContent = lastSaved.id;
+  ticketDate.textContent = formatDate(lastSaved.date);
+  ticketEmployee.textContent = lastSaved.employee;
+
+  ticketItemsBody.innerHTML = "";
+
+  for (const item of lastSaved.items) {
+    const div = document.createElement("div");
+    div.className = "ticketItem";
+
+    div.innerHTML = `
+      <span class="ticketItemName">${item.name} x${item.qty}</span>
+      <span class="ticketItemAmount">${money(item.subtotal)}</span>
+    `;
+
+    ticketItemsBody.appendChild(div);
+  }
+
+  ticketTotal.textContent = money(lastSaved.total);
+  ticketCash.textContent = money(lastSaved.cash);
+  ticketChange.textContent = money(lastSaved.change);
+
+  return true;
+}
+
+printTicketBtn.addEventListener("click", () => {
+  if (!lastSaved) {
+    statusEl.textContent = "Primero registra una venta.";
+    return;
+  }
+
+  const itemsHTML = lastSaved.items.map(item => `
+    <div style="margin:8px 0;">
+      ${item.name}<br>x${item.qty}
+      <div>${money(item.subtotal)}</div>
+    </div>
+  `).join("");
+
+  const win = window.open("", "_blank", "width=300,height=600");
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Ticket</title>
+      </head>
+
+      <body style="
+        margin:0;
+        padding:10px;
+        font-family: monospace;
+        font-size:14px;
+        width:220px;
+        background:white;
+        color:black;
+      ">
+
+        <div style="text-align:center;">
+          <div style="font-size:16px;font-weight:bold;">LAVANDERÍA</div>
+          <div>Ticket de venta</div>
+        </div>
+
+        <div>-------------------------</div>
+
+        <div><b>Folio:</b> ${lastSaved.id}</div>
+        <div><b>Fecha:</b> ${formatDate(lastSaved.date)}</div>
+        <div><b>Empleado:</b> ${lastSaved.employee}</div>
+
+        <div>-------------------------</div>
+
+        <div><b>Prod. Cant. Imp.</b></div>
+
+        ${itemsHTML}
+
+        <div>-------------------------</div>
+
+        <div style="font-weight:bold;">TOTAL</div>
+        <div style="font-size:16px;font-weight:bold;">${money(lastSaved.total)}</div>
+
+        <div style="font-weight:bold;">EFECTIVO</div>
+        <div style="font-size:16px;font-weight:bold;">${money(lastSaved.cash)}</div>
+
+        <div style="font-weight:bold;">CAMBIO</div>
+        <div style="font-size:16px;font-weight:bold;">${money(lastSaved.change)}</div>
+
+        <div>-------------------------</div>
+
+        <div style="text-align:center;">Gracias por su compra</div>
+
+        <br><br>
+
+        <button onclick="window.print()" style="width:100%;padding:10px;">
+          Imprimir
+        </button>
+
+      </body>
+    </html>
+  `);
+
+  win.document.close();
+});
+
+async function printEncargoTicket(encargoId) {
+  ensureSupabase();
+
+  const { data, error } = await supabaseClient
+    .from("encargos")
+    .select("*")
+    .eq("id", encargoId)
+    .single();
+
+  if (error) {
+    alert("Error al cargar encargo: " + error.message);
+    return;
+  }
+
+  const total = Number(data.total || 0);
+  const pagado = Number(data.amount_paid || 0);
+  const cambio = Math.max(pagado - total, 0);
+  const resta = Math.max(total - pagado, 0);
+
+  const kilos = Number(data.kilos || 0);
+  const kilosBase = kilos > 0 && kilos < 4 ? 4 : kilos;
+  const kilosSubtotal = kilosBase * 26;
+
+  const lavadoras =
+    Number(data.used_lavadora_16 || 0) +
+    Number(data.used_lavadora_9 || 0) +
+    Number(data.used_lavadora_4 || 0);
+
+  const secadoras =
+    Number(data.used_secadora_15 || 0) +
+    Number(data.used_secadora_30 || 0) * 2;
+
+  const serviciosHTML = `
+    ${kilos > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Kilos: ${kilos} kg ${kilos < 4 ? "(mínimo aplicado)" : ""}</div>
+        <div>${money(kilosSubtotal)}</div>
+      </div>
+    ` : ""}
+
+    ${Number(data.edredon_individual || 0) > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Edredón Individual: ${data.edredon_individual}</div>
+        <div>${money(data.edredon_individual * 95)}</div>
+      </div>
+    ` : ""}
+
+    ${Number(data.edredon_matrimonial || 0) > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Edredón Matrimonial: ${data.edredon_matrimonial}</div>
+        <div>${money(data.edredon_matrimonial * 100)}</div>
+      </div>
+    ` : ""}
+
+    ${Number(data.edredon_king || 0) > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Edredón King: ${data.edredon_king}</div>
+        <div>${money(data.edredon_king * 110)}</div>
+      </div>
+    ` : ""}
+
+    ${Number(data.colcha_individual || 0) > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Colcha Individual: ${data.colcha_individual}</div>
+        <div>${money(data.colcha_individual * 90)}</div>
+      </div>
+    ` : ""}
+
+    ${Number(data.colcha_matrimonial || 0) > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Colcha Matrimonial: ${data.colcha_matrimonial}</div>
+        <div>${money(data.colcha_matrimonial * 95)}</div>
+      </div>
+    ` : ""}
+
+    ${Number(data.colcha_king || 0) > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Colcha King: ${data.colcha_king}</div>
+        <div>${money(data.colcha_king * 100)}</div>
+      </div>
+    ` : ""}
+
+    ${Number(data.manteles_kilos || 0) > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Manteles: ${data.manteles_kilos} kg</div>
+        <div>${money(data.manteles_subtotal || 0)}</div>
+      </div>
+    ` : ""}
+
+    ${Number(data.almohadas_peluches_qty || 0) > 0 ? `
+      <div style="margin:8px 0;">
+        <div>Almohadas/Peluches: ${data.almohadas_peluches_qty}</div>
+        <div>${money(data.almohadas_peluches_subtotal || data.almohadas_peluches_price)}</div>
+      </div>
+    ` : ""}
+
+    ${lavadoras > 0 ? `<div>Lavadoras: ${lavadoras}</div>` : ""}
+    ${secadoras > 0 ? `<div>Secadoras: ${secadoras}</div>` : ""}
+    ${Number(data.used_jabon || 0) > 0 ? `<div>Detergente: ${data.used_jabon}</div>` : ""}
+    ${Number(data.used_suavizante || 0) > 0 ? `<div>Suavizante: ${data.used_suavizante}</div>` : ""}
+  `;
+
+  const win = window.open("", "_blank", "width=300,height=600");
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Ticket encargo</title>
+      </head>
+
+      <body style="
+        margin:0;
+        padding:10px;
+        font-family: monospace;
+        font-size:14px;
+        width:220px;
+        background:white;
+        color:black;
+      ">
+
+        <div style="text-align:center;">
+          <div style="font-size:16px;font-weight:bold;">LAVANDERÍA</div>
+          <div>Encargo</div>
+        </div>
+
+        <div>-------------------------</div>
+
+        <div><b>Folio:</b> ${data.id}</div>
+        <div><b>Fecha:</b> ${formatDateTime(data.created_at)}</div>
+        <div><b>Empleado:</b> ${data.employee || "-"}</div>
+        <div><b>Cliente:</b> ${data.client_name || "-"}</div>
+
+        <div>-------------------------</div>
+
+        ${serviciosHTML}
+
+        <div>-------------------------</div>
+
+        <div style="font-weight:bold;">TOTAL</div>
+        <div style="font-size:16px;font-weight:bold;">${money(total)}</div>
+
+        <div style="font-weight:bold;">ADELANTO</div>
+        <div style="font-size:16px;font-weight:bold;">${money(pagado)}</div>
+
+        <div style="font-weight:bold;">RESTA</div>
+        <div style="font-size:16px;font-weight:bold;">${money(resta)}</div>
+
+        <div style="font-weight:bold;">CAMBIO</div>
+        <div style="font-size:16px;font-weight:bold;">${money(cambio)}</div>
+
+        <div>-------------------------</div>
+
+        <div><b>Estado:</b> ${humanDeliveredStatus(data.delivered_status)}</div>
+        <div><b>Pago:</b> ${humanPaymentStatus(data.payment_status)}</div>
+
+        <div>-------------------------</div>
+
+        <div style="text-align:center;">Gracias por su preferencia</div>
+
+        <br><br>
+
+        <button onclick="window.print()" style="width:100%;padding:10px;">
+          Imprimir
+        </button>
+
+      </body>
+    </html>
+  `);
+
+  win.document.close();
+}
 
 
 
