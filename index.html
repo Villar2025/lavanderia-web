@@ -171,6 +171,7 @@
             <div class="actions">
               <button id="saveBtn" type="submit" class="primary">Registrar venta</button>
               <button id="newBtn" type="button" class="ghost" disabled>Nueva venta</button>
+              <button id="printTicketBtn" type="button" class="ghost" disabled>Imprimir ticket</button>
             </div>
 
             <p id="status" class="status" role="status" aria-live="polite"></p>
@@ -678,7 +679,7 @@
                 <table class="table" aria-label="Tabla de encargos">
                   <thead>
                     <tr>
-                      <th>ID</th>
+                      <th>Kilos</th>
                       <th>Fecha</th>
                       <th>Empleado</th>
                       <th>Cliente</th>
@@ -831,6 +832,44 @@
       <footer class="footer">
         <small>Lavandería • Control de ventas</small>
       </footer>
+    </div>
+
+    <div id="ticketPrintArea" class="ticketPrintArea">
+      <div class="ticket">
+        <div class="ticketCenter">
+          <strong>LAVANDERÍA</strong>
+          <div>Ticket de venta</div>
+        </div>
+    
+        <div class="ticketLine">-------------------------</div>
+    
+        <div><strong>Folio:</strong> <span id="ticketSaleId">-</span></div>
+        <div><strong>Fecha:</strong> <span id="ticketDate">-</span></div>
+        <div><strong>Empleado:</strong> <span id="ticketEmployee">-</span></div>
+    
+        <div class="ticketLine">-------------------------</div>
+    
+        <div><strong>Prod. Cant. Imp.</strong></div>
+    
+        <div id="ticketItemsBody"></div>
+    
+        <div class="ticketLine">-------------------------</div>
+    
+        <div class="ticketBig">TOTAL</div>
+        <div class="ticketAmount" id="ticketTotal">$0</div>
+    
+        <div class="ticketBig">EFECTIVO</div>
+        <div class="ticketAmount" id="ticketCash">$0</div>
+    
+        <div class="ticketBig">CAMBIO</div>
+        <div class="ticketAmount" id="ticketChange">$0</div>
+    
+        <div class="ticketLine">-------------------------</div>
+    
+        <div class="ticketCenter">
+          Gracias por su compra
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
