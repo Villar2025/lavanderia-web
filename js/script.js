@@ -669,6 +669,10 @@ const encargoEmployee = $("#encargoEmployee");
 const encargoClientName = $("#encargoClientName");
 const encargoClientPhone = $("#encargoClientPhone");
 const encargoKilos = $("#encargoKilos");
+const encargoServiceType = $("#encargoServiceType");
+const encargoKilosField = $("#encargoKilosField");
+const encargoExpressField = $("#encargoExpressField");
+const encargoExpressPrice = $("#encargoExpressPrice");
 
 const edredonIndividual = $("#edredonIndividual");
 const edredonMatrimonial = $("#edredonMatrimonial");
@@ -679,7 +683,11 @@ const colchaMatrimonial = $("#colchaMatrimonial");
 const colchaKing = $("#colchaKing");
 
 const mantelesKilos = $("#mantelesKilos");
-const almohadasPeluchesQty = $("#almohadasPeluchesQty");
+
+const almohadasChico = $("#almohadasChico");
+const almohadasMediano = $("#almohadasMediano");
+const almohadasGrande = $("#almohadasGrande");
+
 const almohadasPeluchesPrice = $("#almohadasPeluchesPrice");
 
 const encargoPaymentStatus = $("#encargoPaymentStatus");
@@ -696,10 +704,29 @@ function num(val) {
   return Number(val || 0);
 }
 
+function toggleEncargoService() {
+  const express = encargoServiceType.value === "express";
+
+  encargoKilosField.style.display = express ? "none" : "";
+  encargoExpressField.style.display = express ? "" : "none";
+
+  if (express) {
+    encargoKilos.value = 0;
+  } else {
+    encargoExpressPrice.value = 0;
+  }
+
+  updateEncargoSummary();
+}
+
 function calcEncargoTotal() {
+  const isExpress = encargoServiceType.value === "express";
+
   const kilos = num(encargoKilos.value);
   const kilosBase = kilos > 0 && kilos < 4 ? 4 : kilos;
-  const kilosSubtotal = kilosBase * 26;
+  const kilosSubtotal = isExpress ? 0 : kilosBase * 26;
+
+  const expressSubtotal = isExpress ? num(encargoExpressPrice.value) : 0;
 
   const edredonSubtotal =
     num(edredonIndividual.value) * 95 +
@@ -715,7 +742,14 @@ function calcEncargoTotal() {
 
   const almohadasSubtotal = num(almohadasPeluchesPrice.value);
 
-  return wholeMoney(kilosSubtotal + edredonSubtotal + colchaSubtotal + mantelesSubtotal + almohadasSubtotal);
+  return wholeMoney(
+    kilosSubtotal +
+    expressSubtotal +
+    edredonSubtotal +
+    colchaSubtotal +
+    mantelesSubtotal +
+    almohadasSubtotal
+  );
 }
 
 function updateEncargoSummary() {
@@ -745,6 +779,8 @@ function updateEncargoSummary() {
 
 [
   encargoKilos,
+  encargoServiceType,
+  encargoExpressPrice,
   edredonIndividual,
   edredonMatrimonial,
   edredonKing,
@@ -752,7 +788,9 @@ function updateEncargoSummary() {
   colchaMatrimonial,
   colchaKing,
   mantelesKilos,
-  almohadasPeluchesQty,
+  almohadasChico,
+  almohadasMediano,
+  almohadasGrande,
   almohadasPeluchesPrice,
   encargoAmountPaid,
   encargoPaymentStatus
@@ -760,6 +798,8 @@ function updateEncargoSummary() {
   el.addEventListener("input", updateEncargoSummary);
   el.addEventListener("change", updateEncargoSummary);
 });
+
+encargoServiceType.addEventListener("change", toggleEncargoService);
 
 async function saveEncargoToSupabase(payload) {
   ensureSupabase();
@@ -810,8 +850,12 @@ encargoForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  const isExpress = encargoServiceType.value === "express";
+  const expressPrice = isExpress ? wholeMoney(encargoExpressPrice.value) : 0;
+  
   const kilosBase = kilos > 0 && kilos < 4 ? 4 : kilos;
-  const kilosSubtotal = wholeMoney(kilosBase * 26);
+  const kilosSubtotal = isExpress ? 0 : wholeMoney(kilosBase * 26);
+  
   const mantelesSubtotal = wholeMoney(num(mantelesKilos.value) * 55);
   const almohadasSubtotal = wholeMoney(almohadasPeluchesPrice.value);
 
@@ -822,8 +866,12 @@ encargoForm.addEventListener("submit", async (e) => {
     employee,
     client_name: clientName,
     client_phone: clientPhone,
-    kilos,
-    kilos_price: 26,
+
+    is_express: isExpress,
+    express_price: expressPrice,
+    
+    kilos: isExpress ? 0 : kilos,
+    kilos_price: isExpress ? 0 : 26,
     kilos_subtotal: kilosSubtotal,
 
     created_at: new Date().toISOString(),
@@ -839,9 +887,17 @@ encargoForm.addEventListener("submit", async (e) => {
     manteles_kilos: num(mantelesKilos.value),
     manteles_subtotal: mantelesSubtotal,
 
-    almohadas_peluches_qty: num(almohadasPeluchesQty.value),
-    almohadas_peluches_price: num(almohadasPeluchesPrice.value),
-    almohadas_peluches_subtotal: almohadasSubtotal,
+    almohadas_chico: num(almohadasChico.value),
+    almohadas_mediano: num(almohadasMediano.value),
+    almohadas_grande: num(almohadasGrande.value),
+
+    almohadas_peluches_qty:
+     num(almohadasChico.value) +
+     num(almohadasMediano.value) +
+     num(almohadasGrande.value),
+
+   almohadas_peluches_price: num(almohadasPeluchesPrice.value),
+   almohadas_peluches_subtotal: almohadasSubtotal,
 
     total,
     payment_status: paymentStatus,
@@ -890,6 +946,9 @@ newEncargoBtn.addEventListener("click", () => {
   encargoClientName.value = "";
   encargoClientPhone.value = "";
   encargoKilos.value = 0;
+  encargoServiceType.value = "normal";
+  encargoExpressPrice.value = 0;
+  toggleEncargoService();
 
   edredonIndividual.value = 0;
   edredonMatrimonial.value = 0;
@@ -901,9 +960,12 @@ newEncargoBtn.addEventListener("click", () => {
 
   mantelesKilos.value = 0;
 
-  almohadasPeluchesQty.value = 0;
-  almohadasPeluchesPrice.value = 0;
+  almohadasChico.value = 0;
+  almohadasMediano.value = 0;
+  almohadasGrande.value = 0;
 
+  almohadasPeluchesPrice.value = 0;
+ 
   encargoPaymentStatus.value = "pagado";
   encargoAmountPaid.value = 0;
 
@@ -913,6 +975,7 @@ newEncargoBtn.addEventListener("click", () => {
   updateEncargoSummary();
 });
 
+toggleEncargoService();
 updateEncargoSummary();
 
 // =====================
@@ -1096,13 +1159,13 @@ async function loadEncargosList() {
     `)
     .order("created_at", { ascending: false });
 
-  if (encargoFromDate.value) {
-    q = q.gte("created_at", `${encargoFromDate.value} 00:00:00`);
-  }
-
-  if (encargoToDate.value) {
-    q = q.lte("created_at", `${encargoToDate.value} 23:59:59`);
-  }
+    if (encargoFromDate.value) {
+      q = q.gte("created_at", localDateStartISO(encargoFromDate.value));
+    }
+    
+    if (encargoToDate.value) {
+      q = q.lte("created_at", localDateEndISO(encargoToDate.value));
+    }
 
   if (encargoEmployeeFilter.value) {
     q = q.eq("employee", encargoEmployeeFilter.value);
@@ -2055,6 +2118,9 @@ async function printEncargoTicket(encargoId) {
   const cambio = Math.max(pagado - total, 0);
   const resta = Math.max(total - pagado, 0);
 
+  const isExpress = data.is_express === true;
+  const expressPrice = Number(data.express_price || 0);
+
   const kilos = Number(data.kilos || 0);
   const kilosBase = kilos > 0 && kilos < 4 ? 4 : kilos;
   const kilosSubtotal = kilosBase * 26;
@@ -2069,12 +2135,17 @@ async function printEncargoTicket(encargoId) {
     Number(data.used_secadora_30 || 0) * 2;
 
   const serviciosHTML = `
-    ${kilos > 0 ? `
-      <div style="margin:8px 0;">
-        <div>Kilos: ${kilos} kg ${kilos < 4 ? "(mínimo aplicado)" : ""}</div>
-        <div>${money(kilosSubtotal)}</div>
-      </div>
-    ` : ""}
+  ${isExpress ? `
+    <div style="margin:8px 0;">
+      <div>Servicio Express</div>
+      <div>${money(expressPrice)}</div>
+    </div>
+  ` : kilos > 0 ? `
+    <div style="margin:8px 0;">
+      <div>Kilos: ${kilos} kg ${kilos < 4 ? "(mínimo aplicado)" : ""}</div>
+      <div>${money(kilosSubtotal)}</div>
+    </div>
+  ` : ""}
 
     ${Number(data.edredon_individual || 0) > 0 ? `
       <div style="margin:8px 0;">
@@ -2125,12 +2196,31 @@ async function printEncargoTicket(encargoId) {
       </div>
     ` : ""}
 
-    ${Number(data.almohadas_peluches_qty || 0) > 0 ? `
-      <div style="margin:8px 0;">
-        <div>Almohadas/Peluches: ${data.almohadas_peluches_qty}</div>
-        <div>${money(data.almohadas_peluches_subtotal || data.almohadas_peluches_price)}</div>
-      </div>
-    ` : ""}
+    ${
+      Number(data.almohadas_chico || 0) > 0 ||
+      Number(data.almohadas_mediano || 0) > 0 ||
+      Number(data.almohadas_grande || 0) > 0
+      ? `
+        <div style="margin:8px 0;">
+          <div><strong>Almohadas / Peluches</strong></div>
+    
+          ${Number(data.almohadas_chico || 0) > 0
+            ? `<div>Chico: ${data.almohadas_chico}</div>`
+            : ""}
+    
+          ${Number(data.almohadas_mediano || 0) > 0
+            ? `<div>Mediano: ${data.almohadas_mediano}</div>`
+            : ""}
+    
+          ${Number(data.almohadas_grande || 0) > 0
+            ? `<div>Grande: ${data.almohadas_grande}</div>`
+            : ""}
+    
+          <div>${money(data.almohadas_peluches_price || 0)}</div>
+        </div>
+    `
+      : ""
+    }
 
     ${lavadoras > 0 ? `<div>Lavadoras: ${lavadoras}</div>` : ""}
     ${secadoras > 0 ? `<div>Secadoras: ${secadoras}</div>` : ""}
