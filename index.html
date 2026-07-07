@@ -553,8 +553,21 @@
                 </div>
 
                 <div class="field">
+                  <label for="encargoServiceType">Tipo de servicio</label>
+                  <select id="encargoServiceType" required>
+                    <option value="normal" selected>Normal por kilos</option>
+                    <option value="express">Servicio express</option>
+                  </select>
+                </div>
+                
+                <div class="field" id="encargoKilosField">
                   <label for="encargoKilos">Kilos pesados ($26 por kilo)</label>
                   <input type="number" id="encargoKilos" min="0" step="0.01" value="0" />
+                </div>
+                
+                <div class="field" id="encargoExpressField" style="display:none;">
+                  <label for="encargoExpressPrice">Precio express</label>
+                  <input type="number" id="encargoExpressPrice" min="0" step="1" value="0" />
                 </div>
               </div>
 
@@ -597,16 +610,34 @@
                     <input type="number" id="mantelesKilos" min="0" step="0.01" value="0" />
                   </div>
 
-                  <div class="field">
-                    <label for="almohadasPeluchesQty">Almohada/Peluches (cantidad de piezas)</label>
-                    <input type="number" id="almohadasPeluchesQty" min="0" value="0" />
-                  </div>
+                </div>
 
+                <hr class="sep" />
+                
+                <h3 style="margin:12px 0 8px;">Almohadas / Peluches</h3>
+                
+                <div class="grid" style="margin-top:12px;">
                   <div class="field">
-                    <label for="almohadasPeluchesPrice">Almohada/Peluches (precio conveniente)</label>
+                    <label for="almohadasChico">Chico</label>
+                    <input type="number" id="almohadasChico" min="0" value="0" />
+                  </div>
+                
+                  <div class="field">
+                    <label for="almohadasMediano">Mediano</label>
+                    <input type="number" id="almohadasMediano" min="0" value="0" />
+                  </div>
+                
+                  <div class="field">
+                    <label for="almohadasGrande">Grande</label>
+                    <input type="number" id="almohadasGrande" min="0" value="0" />
+                  </div>
+                
+                  <div class="field">
+                    <label for="almohadasPeluchesPrice">Precio conveniente</label>
                     <input type="number" id="almohadasPeluchesPrice" min="0" step="0.01" value="0" />
                   </div>
                 </div>
+
               </details>
 
               <div class="grid" style="margin-top:16px;">
