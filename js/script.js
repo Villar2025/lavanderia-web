@@ -206,6 +206,28 @@ document.querySelectorAll(".addBtn").forEach((btn) => {
   });
 });
 
+document.querySelectorAll(".productSelect").forEach((select) => {
+  select.addEventListener("change", () => {
+    const row = select.closest(".row");
+    if (!row) return;
+
+    const qty = row.querySelector(".qtyInput");
+    if (!qty) return;
+
+    if (!select.value) return;
+
+    const opt = select.options[select.selectedIndex];
+    const price = opt.dataset.price;
+    const name = select.value;
+    const category = select.dataset.category;
+
+    addItem({ name, category, price, qty: qty.value });
+
+    select.selectedIndex = 0;
+    qty.value = 1;
+  });
+});
+
 // Secado precio libre
 $("#addCustomDry").addEventListener("click", () => {
   const input = $("#customDryPrice");
@@ -971,6 +993,12 @@ newEncargoBtn.addEventListener("click", () => {
 
   encargoStatus.textContent = "";
   newEncargoBtn.disabled = true;
+
+  const encargosListBlock = $("#encargosListBlock");
+  if (encargosListBlock) encargosListBlock.open = false;
+
+  const serviciosAdicionalesBlock = $("#serviciosAdicionalesBlock");
+  if (serviciosAdicionalesBlock) serviciosAdicionalesBlock.open = false;
 
   updateEncargoSummary();
 });
@@ -2055,7 +2083,7 @@ printTicketBtn.addEventListener("click", () => {
       ">
 
         <div style="text-align:center;">
-          <div style="font-size:16px;font-weight:bold;">LAVANDERÍA</div>
+          <div style="font-size:16px;font-weight:bold;">SPEED WASH</div>
           <div>Ticket de venta</div>
         </div>
 
@@ -2298,7 +2326,6 @@ async function printEncargoTicket(encargoId) {
 
   win.document.close();
 }
-
 
 
 
