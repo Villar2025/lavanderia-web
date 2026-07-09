@@ -202,7 +202,7 @@
 
           <section class="section" id="viewSalesSection" style="display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-              <h2 style="margin:0;">Ver ventas</h2>
+              <h2 style="margin:0;">Ver auto servicio</h2>
             
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="button" id="deleteAllDataBtn" class="iconBtn" style="width:auto;">
@@ -437,7 +437,7 @@
             <hr class="sep" />
           
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-              <h2 style="margin:0;">Resumen de uso</h2>
+              <h2 style="margin:0;">Resumen de fichas</h2>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="button" id="loadUsageSummaryBtn" class="primary" style="width:auto;">
                   Cargar resumen de uso
@@ -475,7 +475,7 @@
             </div>
           
             <div class="block" style="margin-top:12px;">
-              <h3 style="margin:0 0 12px;">Uso en ventas</h3>
+              <h3 style="margin:0 0 12px;">Fichas de auto servicio</h3>
               <div class="tableWrap">
                 <table class="table" aria-label="Uso en ventas">
                   <thead>
@@ -490,7 +490,7 @@
             </div>
           
             <div class="block" style="margin-top:12px;">
-              <h3 style="margin:0 0 12px;">Uso en encargos</h3>
+              <h3 style="margin:0 0 12px;">Fichas de encargos</h3>
               <div class="tableWrap">
                 <table class="table" aria-label="Uso en encargos">
                   <thead>
@@ -505,7 +505,7 @@
             </div>
           
             <div class="block" style="margin-top:12px;">
-              <h3 style="margin:0 0 12px;">Total general</h3>
+              <h3 style="margin:0 0 12px;">Total general de fichas</h3>
               <div class="tableWrap">
                 <table class="table" aria-label="Uso total general">
                   <thead>
@@ -571,7 +571,7 @@
                 </div>
               </div>
 
-              <details class="block" style="margin-top:12px;">
+              <details class="block" id="serviciosAdicionalesBlock" style="margin-top:12px;">
                 <summary>Servicios adicionales</summary>
 
                 <div class="grid" style="margin-top:12px;">
@@ -676,8 +676,8 @@
 
             <hr class="sep" />
 
-            <section class="section">
-              <h2>Lista de encargos</h2>
+            <details class="block" id="encargosListBlock">
+              <summary>Lista de encargos</summary>
 
               <div class="grid">
                 <div class="field">
@@ -727,7 +727,7 @@
               </div>
 
               <p id="encargosListStatus" class="status"></p>
-            </section>
+            </details>
 
             <section class="section" id="encargoDetailPanel" style="display:none;">
               <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
@@ -868,7 +868,7 @@
     <div id="ticketPrintArea" class="ticketPrintArea">
       <div class="ticket">
         <div class="ticketCenter">
-          <strong>LAVANDERÍA</strong>
+          <strong>SPEED WASH</strong>
           <div>Ticket de venta</div>
         </div>
     
@@ -907,5 +907,4 @@
     <script src="js/script.js"></script>
   </body>
 </html>
-
 
