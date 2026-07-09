@@ -271,4 +271,7 @@ select option {
   display: none !important;
 }
 
+.row .productSelect ~ .addBtn:not(.secondary) {
+  display: none;
+}
 
