@@ -275,3 +275,54 @@ select option {
   display: none;
 }
 
+/* =========================
+   Artículos de encargos
+   ========================= */
+
+   .articuloEncargoForm {
+    display: grid;
+    grid-template-columns:
+      minmax(150px, 1.2fr)
+      minmax(150px, 1.2fr)
+      minmax(120px, 1fr)
+      minmax(90px, 0.7fr)
+      minmax(120px, 0.9fr)
+      minmax(150px, 1fr);
+    gap: 10px;
+    align-items: end;
+    margin-top: 12px;
+  }
+  
+  .articuloAgregarField {
+    align-self: end;
+  }
+  
+  .tablaArticulosEncargo {
+    min-width: 680px;
+  }
+  
+  @media (max-width: 900px) {
+    .articuloEncargoForm {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  
+  @media (max-width: 720px) {
+    .articuloEncargoForm {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Ocultar el total de artículos */
+#encargoArticulosTotal {
+  display: none;
+}
+
+#encargoArticulosTotal::before {
+  display: none;
+}
+
+#encargoArticulosTotalBox{
+  display:none;
+}
+
