@@ -569,6 +569,17 @@
                   <label for="encargoExpressPrice">Precio express</label>
                   <input type="number" id="encargoExpressPrice" min="0" step="1" value="0" />
                 </div>
+                
+                <div class="field" id="encargoExpressKilosField" style="display:none;">
+                  <label for="encargoExpressKilos">Kilos del servicio express</label>
+                  <input
+                    type="number"
+                    id="encargoExpressKilos"
+                    min="0"
+                    step="0.01"
+                    value="0"
+                  />
+                </div>
               </div>
 
               <details class="block" id="serviciosAdicionalesBlock" style="margin-top:12px;">
@@ -591,7 +602,7 @@
                   </div>
 
                   <div class="field">
-                    <label for="colchaIndividual">Colcha Individual (90)</label>
+                    <label for="colchaIndividual">Colcha Individual ($90)</label>
                     <input type="number" id="colchaIndividual" min="0" value="0" />
                   </div>
 
@@ -613,30 +624,119 @@
                 </div>
 
                 <hr class="sep" />
+
+                <h3 style="margin:12px 0 8px;">
+                  Almohadas, Peluches, Frazadas y Otros
+                </h3>
                 
-                <h3 style="margin:12px 0 8px;">Almohadas / Peluches</h3>
+                <!--
+                  Estos campos se conservan ocultos para no afectar
+                  la lógica que ya funciona actualmente.
+                -->
+                <div style="display:none;">
+                  <input type="number" id="almohadasChico" min="0" value="0" />
+                  <input type="number" id="almohadasMediano" min="0" value="0" />
+                  <input type="number" id="almohadasGrande" min="0" value="0" />
+                  <input type="number" id="almohadasPeluchesPrice" min="0" step="0.01" value="0" />
+                </div>
                 
-                <div class="grid" style="margin-top:12px;">
+                <div class="articuloEncargoForm">
                   <div class="field">
-                    <label for="almohadasChico">Chico</label>
-                    <input type="number" id="almohadasChico" min="0" value="0" />
+                    <label for="articuloTipo">Artículo</label>
+                    <select id="articuloTipo">
+                      <option value="Almohada">Almohada</option>
+                      <option value="Peluche">Peluche</option>
+                      <option value="Frazada">Frazada</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                
+                  <div class="field" id="articuloOtroField" style="display:none;">
+                    <label for="articuloOtroNombre">Nombre del artículo</label>
+                    <input
+                      type="text"
+                      id="articuloOtroNombre"
+                      placeholder="Ej. Cojín, muñeco, tapete"
+                    />
                   </div>
                 
                   <div class="field">
-                    <label for="almohadasMediano">Mediano</label>
-                    <input type="number" id="almohadasMediano" min="0" value="0" />
+                    <label for="articuloTamano">Tamaño</label>
+                    <select id="articuloTamano">
+                      <option value="Chico">Chico</option>
+                      <option value="Mediano">Mediano</option>
+                      <option value="Grande">Grande</option>
+                    </select>
                   </div>
                 
                   <div class="field">
-                    <label for="almohadasGrande">Grande</label>
-                    <input type="number" id="almohadasGrande" min="0" value="0" />
+                    <label for="articuloCantidad">Cantidad</label>
+                    <input
+                      type="number"
+                      id="articuloCantidad"
+                      min="1"
+                      step="1"
+                      value="1"
+                    />
                   </div>
                 
                   <div class="field">
-                    <label for="almohadasPeluchesPrice">Precio conveniente</label>
-                    <input type="number" id="almohadasPeluchesPrice" min="0" step="0.01" value="0" />
+                    <label for="articuloPrecio">Precio por pieza</label>
+                    <input
+                      type="number"
+                      id="articuloPrecio"
+                      min="0"
+                      step="1"
+                      value="0"
+                    />
+                  </div>
+                
+                  <div class="field articuloAgregarField">
+                    <label>&nbsp;</label>
+                    <button
+                      type="button"
+                      id="agregarArticuloEncargoBtn"
+                      class="addBtn secondary"
+                    >
+                      Agregar artículo
+                    </button>
                   </div>
                 </div>
+                
+                <div class="tableWrap" style="margin-top:12px;">
+                  <table
+                    class="table tablaArticulosEncargo"
+                    aria-label="Artículos del encargo"
+                  >
+                    <thead>
+                      <tr>
+                        <th>Artículo</th>
+                        <th>Tamaño</th>
+                        <th>Cant.</th>
+                        <th>Precio</th>
+                        <th>Subtotal</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                
+                    <tbody id="encargoArticulosBody">
+                      <tr id="encargoArticulosEmpty">
+                        <td colspan="6" class="muted">
+                          Aún no agregas artículos.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div class="totals" id="encargoArticulosTotalBox">
+                  <div class="totalLine">
+                    <span>Total de artículos</span>
+                    <strong id="encargoArticulosTotal">$0</strong>
+                  </div>
+                </div>
+                
+                <p id="encargoArticulosStatus" class="status"></p>
 
               </details>
 
@@ -907,4 +1007,5 @@
     <script src="js/script.js"></script>
   </body>
 </html>
+
 
