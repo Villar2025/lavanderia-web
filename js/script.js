@@ -695,6 +695,8 @@ const encargoServiceType = $("#encargoServiceType");
 const encargoKilosField = $("#encargoKilosField");
 const encargoExpressField = $("#encargoExpressField");
 const encargoExpressPrice = $("#encargoExpressPrice");
+const encargoExpressKilosField = $("#encargoExpressKilosField");
+const encargoExpressKilos = $("#encargoExpressKilos");
 
 const edredonIndividual = $("#edredonIndividual");
 const edredonMatrimonial = $("#edredonMatrimonial");
@@ -726,11 +728,231 @@ function num(val) {
   return Number(val || 0);
 }
 
+// =====================
+// Artículos del encargo
+// Almohadas, Peluches, Frazadas y Otros
+// =====================
+let encargoArticulos = [];
+
+const articuloTipo = $("#articuloTipo");
+const articuloOtroField = $("#articuloOtroField");
+const articuloOtroNombre = $("#articuloOtroNombre");
+const articuloTamano = $("#articuloTamano");
+const articuloCantidad = $("#articuloCantidad");
+const articuloPrecio = $("#articuloPrecio");
+const agregarArticuloEncargoBtn = $("#agregarArticuloEncargoBtn");
+
+const encargoArticulosBody = $("#encargoArticulosBody");
+const encargoArticulosEmpty = $("#encargoArticulosEmpty");
+const encargoArticulosTotal = $("#encargoArticulosTotal");
+const encargoArticulosStatus = $("#encargoArticulosStatus");
+
+function calcEncargoArticulosTotal() {
+  return wholeMoney(
+    encargoArticulos.reduce((total, articulo) => {
+      return total + Number(articulo.cantidad) * Number(articulo.precio);
+    }, 0)
+  );
+}
+
+function syncLegacyArticuloFields() {
+  let totalChico = 0;
+  let totalMediano = 0;
+  let totalGrande = 0;
+
+  for (const articulo of encargoArticulos) {
+    const cantidad = Number(articulo.cantidad || 0);
+
+    if (articulo.tamano === "Chico") {
+      totalChico += cantidad;
+    }
+
+    if (articulo.tamano === "Mediano") {
+      totalMediano += cantidad;
+    }
+
+    if (articulo.tamano === "Grande") {
+      totalGrande += cantidad;
+    }
+  }
+
+  /*
+    Conservamos actualizados los campos anteriores.
+    Así no se rompe la lógica actual del encargo.
+  */
+  almohadasChico.value = totalChico;
+  almohadasMediano.value = totalMediano;
+  almohadasGrande.value = totalGrande;
+  almohadasPeluchesPrice.value = calcEncargoArticulosTotal();
+}
+
+function renderEncargoArticulos() {
+  if (!encargoArticulosBody) return;
+
+  encargoArticulosBody.innerHTML = "";
+
+  if (encargoArticulos.length === 0) {
+    encargoArticulosBody.innerHTML = `
+      <tr id="encargoArticulosEmpty">
+        <td colspan="6" class="muted">
+          Aún no agregas artículos.
+        </td>
+      </tr>
+    `;
+  } else {
+    for (const articulo of encargoArticulos) {
+      const subtotal =
+        Number(articulo.cantidad) * Number(articulo.precio);
+
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td>${articulo.tipo}</td>
+        <td>${articulo.tamano}</td>
+        <td>${articulo.cantidad}</td>
+        <td>${money(articulo.precio)}</td>
+        <td>${money(subtotal)}</td>
+        <td style="text-align:right;">
+          <button
+            type="button"
+            class="iconBtn"
+            data-remove-articulo="${articulo.id}"
+          >
+            Quitar
+          </button>
+        </td>
+      `;
+
+      encargoArticulosBody.appendChild(tr);
+    }
+  }
+
+  const totalArticulos = calcEncargoArticulosTotal();
+
+  if (encargoArticulosTotal) {
+    encargoArticulosTotal.textContent = money(totalArticulos);
+  }
+
+  syncLegacyArticuloFields();
+
+  /*
+    La función actual toma el valor de
+    almohadasPeluchesPrice y lo suma al total.
+  */
+  updateEncargoSummary();
+}
+
+function resetArticuloForm() {
+  if (articuloTipo) articuloTipo.value = "Almohada";
+  if (articuloTamano) articuloTamano.value = "Chico";
+  if (articuloCantidad) articuloCantidad.value = 1;
+  if (articuloPrecio) articuloPrecio.value = 0;
+  if (articuloOtroNombre) articuloOtroNombre.value = "";
+  if (articuloOtroField) articuloOtroField.style.display = "none";
+}
+
+function clearEncargoArticulos() {
+  encargoArticulos = [];
+
+  if (encargoArticulosStatus) {
+    encargoArticulosStatus.textContent = "";
+  }
+
+  resetArticuloForm();
+  renderEncargoArticulos();
+}
+
+if (articuloTipo) {
+  articuloTipo.addEventListener("change", () => {
+    const esOtro = articuloTipo.value === "Otro";
+
+    if (articuloOtroField) {
+      articuloOtroField.style.display = esOtro ? "" : "none";
+    }
+
+    if (!esOtro && articuloOtroNombre) {
+      articuloOtroNombre.value = "";
+    }
+  });
+}
+
+if (agregarArticuloEncargoBtn) {
+  agregarArticuloEncargoBtn.addEventListener("click", () => {
+    const tipoSeleccionado = articuloTipo.value;
+    const otroNombre = articuloOtroNombre.value.trim();
+
+    const tipo =
+      tipoSeleccionado === "Otro"
+        ? otroNombre
+        : tipoSeleccionado;
+
+    const tamano = articuloTamano.value;
+    const cantidad = Number(articuloCantidad.value || 0);
+    const precio = Number(articuloPrecio.value || 0);
+
+    if (!tipo) {
+      encargoArticulosStatus.textContent =
+        "Escribe el nombre del artículo.";
+      return;
+    }
+
+    if (!tamano) {
+      encargoArticulosStatus.textContent =
+        "Selecciona el tamaño.";
+      return;
+    }
+
+    if (!Number.isInteger(cantidad) || cantidad < 1) {
+      encargoArticulosStatus.textContent =
+        "La cantidad debe ser de al menos 1.";
+      return;
+    }
+
+    if (!Number.isFinite(precio) || precio <= 0) {
+      encargoArticulosStatus.textContent =
+        "Escribe un precio válido.";
+      return;
+    }
+
+    encargoArticulos.push({
+      id: crypto.randomUUID(),
+      tipo,
+      tamano,
+      cantidad,
+      precio: wholeMoney(precio),
+    });
+
+    encargoArticulosStatus.textContent = "";
+    resetArticuloForm();
+    renderEncargoArticulos();
+  });
+}
+
+if (encargoArticulosBody) {
+  encargoArticulosBody.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const articuloId = btn.dataset.removeArticulo;
+    if (!articuloId) return;
+
+    encargoArticulos = encargoArticulos.filter(
+      (articulo) => articulo.id !== articuloId
+    );
+
+    renderEncargoArticulos();
+  });
+}
+
+renderEncargoArticulos();
+
 function toggleEncargoService() {
   const express = encargoServiceType.value === "express";
 
   encargoKilosField.style.display = express ? "none" : "";
   encargoExpressField.style.display = express ? "" : "none";
+
+  encargoExpressKilosField.style.display = express ? "" : "none";
 
   if (express) {
     encargoKilos.value = 0;
@@ -840,6 +1062,48 @@ async function saveEncargoToSupabase(payload) {
   return { ok: true, id: data.id };
 }
 
+async function saveEncargoArticulosToSupabase(encargoId, articulos) {
+  ensureSupabase();
+
+  if (!encargoId) {
+    return {
+      ok: false,
+      error: "No se recibió el ID del encargo."
+    };
+  }
+
+  if (!Array.isArray(articulos) || articulos.length === 0) {
+    return {
+      ok: true
+    };
+  }
+
+  const articulosRows = articulos.map((articulo) => ({
+    encargo_id: encargoId,
+    tipo: articulo.tipo,
+    tamano: articulo.tamano,
+    cantidad: Number(articulo.cantidad || 1),
+    importe: Number(articulo.precio || 0)
+  }));
+
+  const { error } = await supabaseClient
+    .from("encargo_articulos")
+    .insert(articulosRows);
+
+  if (error) {
+    console.error("Error al guardar artículos:", error);
+
+    return {
+      ok: false,
+      error: error.message
+    };
+  }
+
+  return {
+    ok: true
+  };
+}
+
 encargoForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -847,6 +1111,7 @@ encargoForm.addEventListener("submit", async (e) => {
   const clientName = encargoClientName.value.trim();
   const clientPhone = encargoClientPhone.value.trim();
   const kilos = num(encargoKilos.value);
+  const expressKilos = num(encargoExpressKilos.value);
 
   const paymentStatus = encargoPaymentStatus.value;
   const amountPaid = wholeMoney(encargoAmountPaid.value);
@@ -891,6 +1156,7 @@ encargoForm.addEventListener("submit", async (e) => {
 
     is_express: isExpress,
     express_price: expressPrice,
+    express_kilos: isExpress ? expressKilos : 0,
     
     kilos: isExpress ? 0 : kilos,
     kilos_price: isExpress ? 0 : 26,
@@ -951,10 +1217,35 @@ encargoForm.addEventListener("submit", async (e) => {
 
   try {
     const res = await saveEncargoToSupabase(payload);
-
-    if (!res.ok) throw new Error(res.error || "No se pudo guardar.");
-
-    encargoStatus.textContent = `✅ Encargo registrado (ID: ${res.id}).`;
+  
+    if (!res.ok) {
+      throw new Error(res.error || "No se pudo guardar el encargo.");
+    }
+  
+    const articulosRes = await saveEncargoArticulosToSupabase(
+      res.id,
+      encargoArticulos
+    );
+  
+    if (!articulosRes.ok) {
+      /*
+        Si fallan los artículos, eliminamos el encargo recién creado
+        para evitar que quede guardado de forma incompleta.
+      */
+      await supabaseClient
+        .from("encargos")
+        .delete()
+        .eq("id", res.id);
+  
+      throw new Error(
+        articulosRes.error ||
+        "No se pudieron guardar los artículos del encargo."
+      );
+    }
+  
+    encargoStatus.textContent =
+      `✅ Encargo registrado (ID: ${res.id}).`;
+  
     newEncargoBtn.disabled = false;
   } catch (err) {
     encargoStatus.textContent = `❌ Error: ${err.message || "No se pudo registrar el encargo."}`;
@@ -970,6 +1261,7 @@ newEncargoBtn.addEventListener("click", () => {
   encargoKilos.value = 0;
   encargoServiceType.value = "normal";
   encargoExpressPrice.value = 0;
+  encargoExpressKilos.value = 0;
   toggleEncargoService();
 
   edredonIndividual.value = 0;
@@ -987,6 +1279,8 @@ newEncargoBtn.addEventListener("click", () => {
   almohadasGrande.value = 0;
 
   almohadasPeluchesPrice.value = 0;
+
+  clearEncargoArticulos();
  
   encargoPaymentStatus.value = "pagado";
   encargoAmountPaid.value = 0;
@@ -2130,16 +2424,36 @@ printTicketBtn.addEventListener("click", () => {
 async function printEncargoTicket(encargoId) {
   ensureSupabase();
 
-  const { data, error } = await supabaseClient
-    .from("encargos")
-    .select("*")
-    .eq("id", encargoId)
-    .single();
+  const win = window.open("", "_blank", "width=300,height=600");
 
-  if (error) {
-    alert("Error al cargar encargo: " + error.message);
+  if (!win) {
+    alert("El navegador bloqueó la ventana.");
     return;
   }
+
+  const { data, error } = await supabaseClient
+  .from("encargos")
+  .select("*")
+  .eq("id", encargoId)
+  .single();
+
+if (error) {
+  win.close();
+  alert("Error al cargar encargo: " + error.message);
+  return;
+}
+
+const { data: articulosData, error: articulosError } = await supabaseClient
+  .from("encargo_articulos")
+  .select("tipo, tamano, cantidad, importe")
+  .eq("encargo_id", encargoId)
+  .order("created_at", { ascending: true });
+
+if (articulosError) {
+  win.close();
+  alert("Error al cargar artículos: " + articulosError.message);
+  return;
+}
 
   const total = Number(data.total || 0);
   const pagado = Number(data.amount_paid || 0);
@@ -2162,10 +2476,42 @@ async function printEncargoTicket(encargoId) {
     Number(data.used_secadora_15 || 0) +
     Number(data.used_secadora_30 || 0) * 2;
 
+    const articulosTicketHTML = (articulosData || []).map(a => {
+      let nombre = a.tipo;
+    
+      if (nombre === "Almohada") nombre = "Almoh.";
+      if (nombre === "Peluche") nombre = "Peluche";
+      if (nombre === "Frazada") nombre = "Fraz.";
+    
+      if (
+        nombre !== "Almoh." &&
+        nombre !== "Peluche" &&
+        nombre !== "Fraz." &&
+        nombre.length > 9
+      ) {
+        nombre = nombre.substring(0, 8) + ".";
+      }
+    
+      let tamano = a.tamano;
+    
+      if (tamano === "Chico") tamano = "Ch.";
+      if (tamano === "Mediano") tamano = "Med.";
+      if (tamano === "Grande") tamano = "Gr.";
+    
+      const subtotal = Number(a.cantidad) * Number(a.importe);
+    
+      return `<div>${nombre} ${tamano}${a.cantidad}x${wholeMoney(a.importe)} ${money(subtotal)}</div>`;
+    }).join("");
+
   const serviciosHTML = `
   ${isExpress ? `
     <div style="margin:8px 0;">
       <div>Servicio Express</div>
+  
+      ${Number(data.express_kilos || 0) > 0
+        ? `<div>Kilos: ${data.express_kilos} kg</div>`
+        : ""}
+  
       <div>${money(expressPrice)}</div>
     </div>
   ` : kilos > 0 ? `
@@ -2224,39 +2570,13 @@ async function printEncargoTicket(encargoId) {
       </div>
     ` : ""}
 
-    ${
-      Number(data.almohadas_chico || 0) > 0 ||
-      Number(data.almohadas_mediano || 0) > 0 ||
-      Number(data.almohadas_grande || 0) > 0
-      ? `
-        <div style="margin:8px 0;">
-          <div><strong>Almohadas / Peluches</strong></div>
-    
-          ${Number(data.almohadas_chico || 0) > 0
-            ? `<div>Chico: ${data.almohadas_chico}</div>`
-            : ""}
-    
-          ${Number(data.almohadas_mediano || 0) > 0
-            ? `<div>Mediano: ${data.almohadas_mediano}</div>`
-            : ""}
-    
-          ${Number(data.almohadas_grande || 0) > 0
-            ? `<div>Grande: ${data.almohadas_grande}</div>`
-            : ""}
-    
-          <div>${money(data.almohadas_peluches_price || 0)}</div>
-        </div>
-    `
-      : ""
-    }
+    ${articulosTicketHTML}
 
-    ${lavadoras > 0 ? `<div>Lavadoras: ${lavadoras}</div>` : ""}
-    ${secadoras > 0 ? `<div>Secadoras: ${secadoras}</div>` : ""}
     ${Number(data.used_jabon || 0) > 0 ? `<div>Detergente: ${data.used_jabon}</div>` : ""}
     ${Number(data.used_suavizante || 0) > 0 ? `<div>Suavizante: ${data.used_suavizante}</div>` : ""}
   `;
 
-  const win = window.open("", "_blank", "width=300,height=600");
+  win.document.open();
 
   win.document.write(`
     <!DOCTYPE html>
@@ -2276,7 +2596,7 @@ async function printEncargoTicket(encargoId) {
       ">
 
         <div style="text-align:center;">
-          <div style="font-size:16px;font-weight:bold;">LAVANDERÍA</div>
+          <div style="font-size:16px;font-weight:bold;">Speed Wash</div>
           <div>Encargo</div>
         </div>
 
@@ -2326,6 +2646,7 @@ async function printEncargoTicket(encargoId) {
 
   win.document.close();
 }
+
 
 
 
