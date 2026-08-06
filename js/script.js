@@ -17,6 +17,7 @@ if (window.supabase && typeof window.supabase.createClient === "function") {
 // =====================
 let cart = []; // [{ id, name, category, price, qty }]
 let lastSaved = null;
+let lastEncargoId = null;
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -117,7 +118,6 @@ function render() {
 
     tr.innerHTML = `
       <td>${item.name}</td>
-      <td>${item.category}</td>
       <td>${money(item.price)}</td>
       <td>
         <input
@@ -666,8 +666,70 @@ async function deleteAllDataExceptPending() {
 const logoutBtn = $("#logoutBtn");
 const deleteAllDataBtn = $("#deleteAllDataBtn");
 
+const btnConsultaAutoServicio = $("#btnConsultaAutoServicio");
+const btnConsultaEncargos = $("#btnConsultaEncargos");
+const btnConsultaResumen = $("#btnConsultaResumen");
+
+const consultaAutoServicio = $("#consultaAutoServicio");
+const consultaEncargos = $("#consultaEncargos");
+const consultaResumen = $("#consultaResumen");
+
+function mostrarConsulta(tipo) {
+  consultaAutoServicio.style.display =
+    tipo === "auto" ? "" : "none";
+
+  consultaEncargos.style.display =
+    tipo === "encargos" ? "" : "none";
+
+  consultaResumen.style.display =
+    tipo === "resumen" ? "" : "none";
+
+  btnConsultaAutoServicio.classList.toggle(
+    "active",
+    tipo === "auto"
+  );
+
+  btnConsultaEncargos.classList.toggle(
+    "active",
+    tipo === "encargos"
+  );
+
+  btnConsultaResumen.classList.toggle(
+    "active",
+    tipo === "resumen"
+  );
+}
+
+btnConsultaAutoServicio.addEventListener("click", () => {
+  mostrarConsulta("auto");
+});
+
+btnConsultaEncargos.addEventListener("click", () => {
+  mostrarConsulta("encargos");
+});
+
+btnConsultaResumen.addEventListener("click", () => {
+  mostrarConsulta("resumen");
+});
+
+consultaAutoServicio.style.display = "none";
+consultaEncargos.style.display = "none";
+consultaResumen.style.display = "none";
+
+btnConsultaAutoServicio.classList.remove("active");
+btnConsultaEncargos.classList.remove("active");
+btnConsultaResumen.classList.remove("active");
+
 logoutBtn.addEventListener("click", () => {
   viewSalesSection.style.display = "none";
+
+  consultaAutoServicio.style.display = "none";
+  consultaEncargos.style.display = "none";
+  consultaResumen.style.display = "none";
+
+  btnConsultaAutoServicio.classList.remove("active");
+  btnConsultaEncargos.classList.remove("active");
+  btnConsultaResumen.classList.remove("active");
 
   salesBody.innerHTML = "";
   detailPanel.style.display = "none";
@@ -723,6 +785,7 @@ const encargoResultLabel = $("#encargoResultLabel");
 const encargoStatus = $("#encargoStatus");
 const saveEncargoBtn = $("#saveEncargoBtn");
 const newEncargoBtn = $("#newEncargoBtn");
+const printEncargoBtn = $("#printEncargoBtn");
 
 function num(val) {
   return Number(val || 0);
@@ -950,7 +1013,7 @@ function toggleEncargoService() {
   const express = encargoServiceType.value === "express";
 
   encargoKilosField.style.display = express ? "none" : "";
-  encargoExpressField.style.display = express ? "" : "none";
+  encargoExpressField.style.display = "none";
 
   encargoExpressKilosField.style.display = express ? "" : "none";
 
@@ -958,6 +1021,19 @@ function toggleEncargoService() {
     encargoKilos.value = 0;
   } else {
     encargoExpressPrice.value = 0;
+  }
+
+  updateEncargoSummary();
+}
+
+function updateExpressPrice() {
+  const kilos = num(encargoExpressKilos.value);
+
+  if (kilos <= 0) {
+    encargoExpressPrice.value = 0;
+  } else {
+    const kilosBase = kilos < 4 ? 4 : kilos;
+    encargoExpressPrice.value = wholeMoney(kilosBase * 30);
   }
 
   updateEncargoSummary();
@@ -1003,7 +1079,7 @@ function updateEncargoSummary() {
 
   encargoTotal.textContent = money(total);
 
-  if (status === "pagado") {
+  if (status === "pagado" || status === "transferencia") {
     const cambio = paid - total;
     encargoResultLabel.textContent = "Cambio";
     encargoResult.textContent = money(cambio);
@@ -1044,6 +1120,8 @@ function updateEncargoSummary() {
 });
 
 encargoServiceType.addEventListener("change", toggleEncargoService);
+encargoExpressKilos.addEventListener("input", updateExpressPrice);
+encargoExpressKilos.addEventListener("change", updateExpressPrice);
 
 async function saveEncargoToSupabase(payload) {
   ensureSupabase();
@@ -1132,8 +1210,11 @@ encargoForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  if (paymentStatus === "pagado" && amountPaid < total) {
-    encargoStatus.textContent = "Si está marcado como pagado, el dinero debe cubrir el total.";
+  if (
+    (paymentStatus === "pagado" || paymentStatus === "transferencia") &&
+    amountPaid < total
+  ) {
+    encargoStatus.textContent = "Si está marcado como pagado, el monto debe cubrir el total.";
     return;
   }
 
@@ -1146,8 +1227,15 @@ encargoForm.addEventListener("submit", async (e) => {
   const mantelesSubtotal = wholeMoney(num(mantelesKilos.value) * 55);
   const almohadasSubtotal = wholeMoney(almohadasPeluchesPrice.value);
 
-  const cambio = paymentStatus === "pagado" ? wholeMoney(amountPaid - total) : 0;
-  const amountDue = paymentStatus === "pendiente" ? wholeMoney(Math.max(total - amountPaid, 0)) : 0;
+  const cambio =
+    paymentStatus === "pagado"
+      ? wholeMoney(amountPaid - total)
+      : 0;
+
+  const amountDue =
+    paymentStatus === "pendiente"
+      ? wholeMoney(Math.max(total - amountPaid, 0))
+      : 0;
 
   const payload = {
     employee,
@@ -1247,6 +1335,8 @@ encargoForm.addEventListener("submit", async (e) => {
       `✅ Encargo registrado (ID: ${res.id}).`;
   
     newEncargoBtn.disabled = false;
+    printEncargoBtn.disabled = false;
+    lastEncargoId = res.id;
   } catch (err) {
     encargoStatus.textContent = `❌ Error: ${err.message || "No se pudo registrar el encargo."}`;
   } finally {
@@ -1288,6 +1378,9 @@ newEncargoBtn.addEventListener("click", () => {
   encargoStatus.textContent = "";
   newEncargoBtn.disabled = true;
 
+  printEncargoBtn.disabled = true;
+  lastEncargoId = null;
+
   const encargosListBlock = $("#encargosListBlock");
   if (encargosListBlock) encargosListBlock.open = false;
 
@@ -1295,6 +1388,15 @@ newEncargoBtn.addEventListener("click", () => {
   if (serviciosAdicionalesBlock) serviciosAdicionalesBlock.open = false;
 
   updateEncargoSummary();
+});
+
+printEncargoBtn.addEventListener("click", () => {
+  if (!lastEncargoId) {
+    encargoStatus.textContent = "Primero registra un encargo.";
+    return;
+  }
+
+  printEncargoTicket(lastEncargoId);
 });
 
 toggleEncargoService();
@@ -1472,6 +1574,8 @@ async function loadEncargosList() {
       client_name,
       client_phone,
       kilos,
+      is_express,
+      express_kilos,
       payment_status,
       amount_paid,
       total,
@@ -1514,7 +1618,11 @@ async function loadEncargosList() {
     const estadoPedido = row.delivered_status || "pendiente";
 
     tr.innerHTML = `
-      <td>${row.kilos !== null && row.kilos !== undefined ? row.kilos + " kg" : "-"}</td>
+      <td>${
+  row.is_express
+    ? Number(row.express_kilos || 0) + " kg ESS"
+    : Number(row.kilos || 0) + " kg"
+}</td>
       <td>${fecha}</td>
       <td>${row.employee || ""}</td>
       <td>${row.client_name || ""}</td>
@@ -1616,8 +1724,12 @@ async function saveEncargoUsageAndDelivery() {
   const deliveredStatus = detailDelivered.value === "entregado" ? "entregado" : "pendiente";
   const total = Number(currentEncargoTotal || 0);
 
-  if (paymentStatus === "pagado" && amountPaid < total) {
-    encargoDetailStatus.textContent = "Si marcas como pagado, el monto debe cubrir el total.";
+  if (
+    (paymentStatus === "pagado" || paymentStatus === "transferencia") &&
+    amountPaid < total
+  ) {
+    encargoDetailStatus.textContent =
+      "Si marcas como pagado, el monto debe cubrir el total.";
     return;
   }
 
@@ -1639,8 +1751,15 @@ async function saveEncargoUsageAndDelivery() {
 
     payment_status: paymentStatus,
     amount_paid: amountPaid,
-    change: paymentStatus === "pagado" ? wholeMoney(amountPaid - total) : 0,
-    amount_due: paymentStatus === "pendiente" ? wholeMoney(Math.max(total - amountPaid, 0)) : 0,
+    change:
+    paymentStatus === "pagado"
+      ? wholeMoney(amountPaid - total)
+      : 0,
+  
+    amount_due:
+      paymentStatus === "pendiente"
+        ? wholeMoney(Math.max(total - amountPaid, 0))
+        : 0,
 
     delivered_status: deliveredStatus,
     delivered_at: deliveredStatus === "entregado" ? new Date().toISOString() : null,
@@ -1714,7 +1833,7 @@ if (saveEncargoUsageBtn) {
 // =====================
 // Tabs
 // =====================
-const tabBtns = document.querySelectorAll(".tabBtn");
+const tabBtns = document.querySelectorAll(".tabBtn[data-tab]");
 const tabContents = document.querySelectorAll(".tabContent");
 
 tabBtns.forEach((btn) => {
@@ -1795,7 +1914,9 @@ function setViewEncargoTableMessage(message, colspan = 4, target = viewEncargoSe
 }
 
 function humanPaymentStatus(value) {
-  return value === "pagado" ? "Pagado" : "Pendiente / Adelanto";
+  if (value === "pagado") return "Pagado";
+  if (value === "transferencia") return "Pagado por transferencia";
+  return "Pendiente / Adelanto";
 }
 
 function humanDeliveredStatus(value) {
@@ -2459,6 +2580,11 @@ if (articulosError) {
   const pagado = Number(data.amount_paid || 0);
   const cambio = Math.max(pagado - total, 0);
   const resta = Math.max(total - pagado, 0);
+  const esTransferencia = data.payment_status === "transferencia";
+
+  const cambioTicket = esTransferencia
+    ? 0
+    : cambio;
 
   const isExpress = data.is_express === true;
   const expressPrice = Number(data.express_price || 0);
@@ -2509,8 +2635,8 @@ if (articulosError) {
       <div>Servicio Express</div>
   
       ${Number(data.express_kilos || 0) > 0
-        ? `<div>Kilos: ${data.express_kilos} kg</div>`
-        : ""}
+  ? `<div>Kilos: ${data.express_kilos} kg ${Number(data.express_kilos || 0) < 4 ? "(mínimo aplicado)" : ""}</div>`
+  : ""}
   
       <div>${money(expressPrice)}</div>
     </div>
@@ -2623,7 +2749,7 @@ if (articulosError) {
         <div style="font-size:16px;font-weight:bold;">${money(resta)}</div>
 
         <div style="font-weight:bold;">CAMBIO</div>
-        <div style="font-size:16px;font-weight:bold;">${money(cambio)}</div>
+        <div style="font-size:16px;font-weight:bold;">${money(cambioTicket)}</div>
 
         <div>-------------------------</div>
 
