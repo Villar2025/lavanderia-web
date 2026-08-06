@@ -135,7 +135,6 @@
                   <thead>
                     <tr>
                       <th>Producto</th>
-                      <th>Categoría</th>
                       <th>Precio</th>
                       <th>Cant.</th>
                       <th>Subtotal</th>
@@ -201,6 +200,32 @@
           </section>
 
           <section class="section" id="viewSalesSection" style="display:none;">
+            <div id="consultasMenu" class="tabs" style="margin-bottom:18px;">
+              <button
+                type="button"
+                id="btnConsultaAutoServicio"
+                class="tabBtn active"
+              >
+                Auto servicio
+              </button>
+            
+              <button
+                type="button"
+                id="btnConsultaEncargos"
+                class="tabBtn"
+              >
+                Encargos
+              </button>
+            
+              <button
+                type="button"
+                id="btnConsultaResumen"
+                class="tabBtn"
+              >
+                Resumen de fichas
+              </button>
+            </div>
+            <div id="consultaAutoServicio">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
               <h2 style="margin:0;">Ver auto servicio</h2>
             
@@ -294,9 +319,9 @@
                 </table>
               </div>
             </div>
-
+          </div>
             <hr class="sep" />
-
+            <div id="consultaEncargos" style="display:none;">
             <section class="section">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <h2 style="margin:0;">Ver encargos</h2>
@@ -432,8 +457,10 @@
                 </div>
               </div>
             </section>
+          </div>
           </section>
           <section class="section" id="usageSummarySection">
+            <div id="consultaResumen" style="display:none;">
             <hr class="sep" />
           
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
@@ -520,6 +547,7 @@
             </div>
           
             <p id="usageSummaryStatus" class="status"></p>
+          </div>
           </section>
         </div>
 
@@ -571,7 +599,7 @@
                 </div>
                 
                 <div class="field" id="encargoExpressKilosField" style="display:none;">
-                  <label for="encargoExpressKilos">Kilos del servicio express</label>
+                  <label for="encargoExpressKilos">Kilos pesados del servicio express ($30 por kilo)</label>
                   <input
                     type="number"
                     id="encargoExpressKilos"
@@ -745,7 +773,9 @@
                   <label for="encargoPaymentStatus">Estado de pago</label>
                   <select id="encargoPaymentStatus" required>
                     <option value="pagado">Pagado</option>
+                    <option value="transferencia">Pagado por transferencia</option>
                     <option value="pendiente">Pendiente / Adelanto</option>
+
                   </select>
                 </div>
 
@@ -769,6 +799,7 @@
               <div class="actions">
                 <button type="submit" id="saveEncargoBtn" class="primary">Registrar encargo</button>
                 <button type="button" id="newEncargoBtn" class="ghost" disabled>Nuevo encargo</button>
+                <button type="button" id="printEncargoBtn" class="ghost" disabled>Imprimir ticket</button>
               </div>
 
               <p id="encargoStatus" class="status"></p>
