@@ -156,15 +156,32 @@
             <hr class="sep" />
 
             <section class="grid">
+
+              <div class="field">
+                <label for="salePaymentMethod">Método de pago</label>
+                <select id="salePaymentMethod" required>
+                  <option value="efectivo" selected>Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                </select>
+              </div>
+            
               <div class="field">
                 <label for="cash">Dinero recibido</label>
-                <input id="cash" type="number" min="0" step="1" placeholder="Ej. 200" required />
+                <input
+                  id="cash"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Ej. 200"
+                  required
+                />
               </div>
-
+            
               <div class="field">
                 <label>Cambio</label>
                 <div class="pill" id="change">$0</div>
               </div>
+            
             </section>
 
             <div class="actions">
@@ -224,6 +241,14 @@
               >
                 Resumen de fichas
               </button>
+
+              <button
+              type="button"
+              id="openCorteTurnoBtn"
+              class="tabBtn"
+            >
+              Corte de turno
+            </button>
             </div>
             <div id="consultaAutoServicio">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
@@ -549,6 +574,242 @@
             <p id="usageSummaryStatus" class="status"></p>
           </div>
           </section>
+        <section class="section" id="corteTurnoSection">
+          <div id="consultaCorteTurno" style="display:none;">
+        
+            <hr class="sep" />
+        
+            <h2>Corte de turno</h2>
+        
+            <div class="grid">
+        
+              <div class="field">
+                <label for="corteEmployee">Empleado</label>
+                <select id="corteEmployee">
+                  <option value="" selected disabled>Selecciona empleado</option>
+                  <option value="Adriana">Adriana</option>
+                  <option value="Empleado 2">Empleado 2</option>
+                  <option value="Empleado 3">Empleado 3</option>
+                </select>
+              </div>
+        
+              <div class="field">
+                <label for="corteFechaInicio">Fecha inicial</label>
+                <input id="corteFechaInicio" type="date" />
+              </div>
+              
+              <div class="field">
+                <label for="corteHoraInicio">Hora inicial</label>
+                <input
+                  id="corteHoraInicio"
+                  type="text"
+                  placeholder="Ej. 17:00"
+                />
+              </div>
+              
+              <div class="field">
+                <label for="corteFechaFin">Fecha final</label>
+                <input id="corteFechaFin" type="date" />
+              </div>
+              
+              <div class="field">
+                <label for="corteHoraFin">Hora final</label>
+                <input
+                  id="corteHoraFin"
+                  type="text"
+                  placeholder="Ej. 17:00"
+                />
+              </div>
+        
+            </div>
+        
+            <div class="actions">
+              <button
+                type="button"
+                id="generarCorteBtn"
+                class="primary"
+              >
+                Generar corte
+              </button>
+            
+              <button
+                type="button"
+                id="guardarCorteBtn"
+                class="ghost"
+                disabled
+              >
+                Guardar / Cerrar corte
+              </button>
+            </div>
+        
+            <p id="corteStatus" class="status"></p>
+
+            <hr class="sep" />
+
+            <div class="block" style="margin-top:12px;">
+              <h3 style="margin:0 0 12px;">Historial de cortes</h3>
+            
+              <div class="grid">
+            
+                <div class="field">
+                  <label for="historialCorteDesde">Desde</label>
+                  <input id="historialCorteDesde" type="date" />
+                </div>
+            
+                <div class="field">
+                  <label for="historialCorteHasta">Hasta</label>
+                  <input id="historialCorteHasta" type="date" />
+                </div>
+            
+                <div class="field">
+                  <label for="historialCorteEmpleado">Empleado</label>
+                  <select id="historialCorteEmpleado">
+                    <option value="">Todos</option>
+                    <option value="Adriana">Adriana</option>
+                    <option value="Empleado 2">Empleado 2</option>
+                    <option value="Empleado 3">Empleado 3</option>
+                  </select>
+                </div>
+            
+                <div class="field">
+                  <label>&nbsp;</label>
+                  <button
+                    type="button"
+                    id="cargarHistorialCortesBtn"
+                    class="primary"
+                  >
+                    Consultar cortes
+                  </button>
+                </div>
+            
+              </div>
+            
+              <div class="tableWrap" style="margin-top:12px;">
+                <table class="table" aria-label="Historial de cortes">
+                  <thead>
+                    <tr>
+                      <th>Folio</th>
+                      <th>Empleado</th>
+                      <th>Inicio</th>
+                      <th>Fin</th>
+                      <th>Efectivo</th>
+                      <th>Transferencias</th>
+                      <th>Total</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+            
+                  <tbody id="historialCortesBody"></tbody>
+                </table>
+              </div>
+            
+              <p id="historialCortesStatus" class="status"></p>
+
+              <div
+              id="historialCortesPaginacion"
+              style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:12px;"
+            >
+              <button
+                type="button"
+                id="historialAnteriorBtn"
+                class="ghost"
+                style="width:auto;"
+                disabled
+              >
+                ← Anterior
+              </button>
+            
+              <span id="historialPaginaInfo" class="muted">
+                Página 1
+              </span>
+            
+              <button
+                type="button"
+                id="historialSiguienteBtn"
+                class="ghost"
+                style="width:auto;"
+                disabled
+              >
+                Siguiente →
+              </button>
+            </div>
+
+              <div
+              id="detalleCortePanel"
+              class="block"
+              style="display:none; margin-top:12px;"
+            >
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                <h3 style="margin:0;">
+                  Detalle del corte
+                </h3>
+            
+                <button
+                  type="button"
+                  id="cerrarDetalleCorteBtn"
+                  class="ghost"
+                  style="width:auto;"
+                >
+                  Cerrar
+                </button>
+              </div>
+            
+              <div class="grid" style="margin-top:12px;">
+                <div class="pill">
+                  <strong>Folio:</strong>
+                  <span id="detalleCorteId">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Empleado:</strong>
+                  <span id="detalleCorteEmpleado">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Inicio:</strong>
+                  <span id="detalleCorteInicio">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Fin:</strong>
+                  <span id="detalleCorteFin">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Efectivo:</strong>
+                  <span id="detalleCorteEfectivo">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Transferencias:</strong>
+                  <span id="detalleCorteTransferencias">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Total cobrado:</strong>
+                  <span id="detalleCorteTotal">$0</span>
+                </div>
+              </div>
+            
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 10px;">Fichas de Auto servicio</h3>
+                <div id="detalleFichasAuto"></div>
+              </div>
+            
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 10px;">Fichas de Encargos</h3>
+                <div id="detalleFichasEncargos"></div>
+              </div>
+            
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 10px;">Total general de fichas</h3>
+                <div id="detalleFichasTotal"></div>
+              </div>
+            </div>
+            </div>
+        
+          </div>
+        </section>
         </div>
 
         <!-- ========================= -->
@@ -965,6 +1226,14 @@
                   </div>
 
                   <div class="field">
+                    <label for="detailAbonoMetodo">Método del abono</label>
+                    <select id="detailAbonoMetodo">
+                      <option value="efectivo" selected>Efectivo</option>
+                      <option value="transferencia">Transferencia</option>
+                    </select>
+                  </div>
+
+                  <div class="field">
                     <label for="detailDelivered">Estado del pedido</label>
                     <select id="detailDelivered">
                       <option value="pendiente">Pendiente</option>
@@ -1038,4 +1307,5 @@
     <script src="js/script.js"></script>
   </body>
 </html>
+
 
