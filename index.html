@@ -312,14 +312,27 @@
 
             <div id="salesSummary" class="block" style="margin-top:10px; display:none;">
               <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            
                 <div>
                   <strong>Total ventas:</strong>
                   <span id="summaryCount">0</span>
                 </div>
+            
+                <div>
+                  <strong>Efectivo:</strong>
+                  <span id="summaryEfectivo">$0</span>
+                </div>
+            
+                <div>
+                  <strong>Transferencia:</strong>
+                  <span id="summaryTransferencia">$0</span>
+                </div>
+            
                 <div>
                   <strong>Ingreso total:</strong>
                   <span id="summaryTotal">$0</span>
                 </div>
+            
               </div>
             </div>
 
@@ -404,26 +417,37 @@
 
               <div id="viewEncargosSummary" class="block" style="margin-top:10px; display:none;">
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+              
                   <div>
                     <strong>Total encargos:</strong>
                     <span id="viewEncargosSummaryCount">0</span>
                   </div>
+              
                   <div>
                     <strong>Total vendido:</strong>
                     <span id="viewEncargosSummaryTotal">$0</span>
                   </div>
+              
+                  <div>
+                    <strong>Efectivo:</strong>
+                    <span id="viewEncargosSummaryEfectivo">$0</span>
+                  </div>
+              
+                  <div>
+                    <strong>Transferencias:</strong>
+                    <span id="viewEncargosSummaryTransferencia">$0</span>
+                  </div>
+              
                   <div>
                     <strong>Total cobrado:</strong>
                     <span id="viewEncargosSummaryPaid">$0</span>
                   </div>
+              
                   <div>
                     <strong>Total por cobrar:</strong>
                     <span id="viewEncargosSummaryDue">$0</span>
                   </div>
-                  <div>
-                    <strong>Total cambio:</strong>
-                    <span id="viewEncargosSummaryCambio">$0</span>
-                  </div>
+              
                 </div>
               </div>
 
@@ -817,9 +841,11 @@
         <!-- ========================= -->
         <div id="encargosTab" class="tabContent">
           <section class="section" id="encargoSection">
-            <h2>Registro de Encargo</h2>
 
-            <form id="encargoForm" autocomplete="off">
+            <details class="block" id="encargoRegistroBlock" open>
+              <summary>Registro de Encargo</summary>
+          
+              <form id="encargoForm" autocomplete="off">
               <div class="grid">
                 <div class="field">
                   <label for="encargoEmployee">Empleado</label>
@@ -1064,10 +1090,12 @@
               </div>
 
               <p id="encargoStatus" class="status"></p>
-            </form>
-
+              </form>
+            
+                </details>
+            
             <hr class="sep" />
-
+            
             <details class="block" id="encargosListBlock">
               <summary>Lista de encargos</summary>
 
@@ -1121,10 +1149,18 @@
               <p id="encargosListStatus" class="status"></p>
             </details>
 
-            <section class="section" id="encargoDetailPanel" style="display:none;">
-              <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                <h2 style="margin:0;">Detalle del encargo</h2>
-                <button type="button" id="closeEncargoDetailBtn" class="ghost" style="width:auto;">Cerrar</button>
+            <details class="block" id="encargoDetailPanel" style="display:none;">
+              <summary>Detalle del encargo</summary>
+            
+              <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+                <button
+                  type="button"
+                  id="closeEncargoDetailBtn"
+                  class="ghost"
+                  style="width:auto;"
+                >
+                  Cerrar
+                </button>
               </div>
 
               <div class="block" style="margin-top:12px;">
@@ -1133,6 +1169,18 @@
                   <div class="pill"><strong>Cliente:</strong> <span id="detailEncargoCliente">-</span></div>
                   <div class="pill"><strong>Empleado:</strong> <span id="detailEncargoEmpleado">-</span></div>
                   <div class="pill"><strong>Total:</strong> <span id="detailEncargoTotal">-</span></div>
+                </div>
+              </div>
+              
+              <div class="block" style="margin-top:12px;">
+                <div class="field">
+                  <label for="detailUsoEmployee">Empleado que registra el uso</label>
+                  <select id="detailUsoEmployee">
+                    <option value="" selected disabled>Selecciona empleado</option>
+                    <option value="Adriana">Adriana</option>
+                    <option value="Empleado 2">Empleado 2</option>
+                    <option value="Empleado 3">Empleado 3</option>
+                  </select>
                 </div>
               </div>
 
@@ -1255,7 +1303,7 @@
               </div>
 
               <p id="encargoDetailStatus" class="status"></p>
-            </section>
+           </details>
           </section>
         </div>
       </main>
@@ -1307,5 +1355,6 @@
     <script src="js/script.js"></script>
   </body>
 </html>
+
 
 
