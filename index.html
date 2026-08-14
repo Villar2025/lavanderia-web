@@ -249,6 +249,14 @@
             >
               Corte de turno
             </button>
+
+            <button
+            type="button"
+            id="btnGastosReparto"
+            class="tabBtn"
+          >
+            Gastos y reparto
+          </button>
             </div>
             <div id="consultaAutoServicio">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
@@ -836,6 +844,308 @@
         </section>
         </div>
 
+        <section class="section" id="gastosRepartoSection">
+          <div id="consultaGastosReparto" style="display:none;">
+        
+            <hr class="sep" />
+        
+            <h2>Gastos y reparto</h2>
+        
+            <div class="block" style="margin-top:12px;">
+              <h3 style="margin:0 0 12px;">Cortes disponibles</h3>
+        
+              <p class="muted" style="margin-top:0;">
+                Selecciona los cortes cerrados que formarán parte de este reparto.
+              </p>
+        
+              <div class="tableWrap">
+                <table class="table" aria-label="Cortes disponibles para reparto">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Empleado</th>
+                      <th>Inicio</th>
+                      <th>Fin</th>
+                      <th>Efectivo</th>
+                      <th>Transferencias</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="repartoCortesBody"></tbody>
+                </table>
+              </div>
+        
+              <p id="repartoCortesStatus" class="status"></p>
+            </div>
+        
+            <div class="block" style="margin-top:12px;">
+              <div class="grid">
+            
+                <div class="pill">
+                  <strong>Efectivo de cortes:</strong>
+                  <span id="repartoEfectivo">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Transferencias:</strong>
+                  <span id="repartoTransferencias">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Gran total de cortes:</strong>
+                  <span id="repartoGranTotal">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Total salidas en efectivo:</strong>
+                  <span id="repartoTotalSalidas">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Efectivo restante:</strong>
+                  <span id="repartoEfectivoRestante">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Restante total:</strong>
+                  <span id="repartoRestante">$0</span>
+                </div>
+            
+              </div>
+            </div>
+        
+              <details class="block" style="margin-top:12px;">
+                <summary style="cursor:pointer; font-weight:700;">
+                  Agregar gasto
+                </summary>
+              
+                <div style="margin-top:12px;">
+                  <div class="grid">
+                    <div class="field">
+                      <label for="repartoConcepto">Concepto</label>
+                      <input
+                        type="text"
+                        id="repartoConcepto"
+                        placeholder="Ej. Gas, sueldo Adriana, reparación"
+                      />
+                    </div>
+              
+                    <div class="field">
+                      <label for="repartoMonto">Monto</label>
+                      <input
+                        type="number"
+                        id="repartoMonto"
+                        min="0"
+                        step="1"
+                        value="0"
+                      />
+                    </div>
+                  </div>
+              
+                  <div class="actions">
+                    <button
+                      type="button"
+                      id="agregarGastoRepartoBtn"
+                      class="primary"
+                    >
+                      Agregar gasto
+                    </button>
+                  </div>
+                </div>
+              </details>
+        
+              <details class="block" style="margin-top:12px;">
+                <summary style="cursor:pointer; font-weight:700;">
+                  Salidas del reparto
+                </summary>
+              
+                <div style="margin-top:12px;">
+                  <div class="tableWrap">
+                    <table class="table" aria-label="Gastos del reparto">
+                      <thead>
+                        <tr>
+                          <th>Concepto</th>
+                          <th>Monto</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody id="repartoGastosBody"></tbody>
+                    </table>
+                  </div>
+                  <div class="actions">
+                    <button
+                      type="button"
+                      id="guardarRepartoBtn"
+                      class="primary"
+                      disabled
+                    >
+                      Guardar reparto
+                    </button>
+                  </div>
+                </div>
+              </details>
+        
+        
+            <p id="repartoStatus" class="status"></p>
+
+            <hr class="sep" />
+
+            <details class="block" style="margin-top:12px;">
+              <summary style="cursor:pointer; font-weight:700;">
+                Historial de repartos
+              </summary>
+            
+              <div style="margin-top:12px;">
+            
+                <div class="actions">
+                  <button
+                    type="button"
+                    id="cargarHistorialRepartosBtn"
+                    class="primary"
+                  >
+                    Cargar historial
+                  </button>
+                </div>
+            
+                <div class="tableWrap" style="margin-top:12px;">
+                  <table class="table" aria-label="Historial de repartos">
+                    <thead>
+                      <tr>
+                        <th>Folio</th>
+                        <th>Fecha</th>
+                        <th>Efectivo</th>
+                        <th>Transferencias</th>
+                        <th>Total cortes</th>
+                        <th>Total salidas</th>
+                        <th>Efectivo restante</th>
+                        <th>Restante total</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+            
+                    <tbody id="historialRepartosBody"></tbody>
+                  </table>
+                </div>
+            
+                <p id="historialRepartosStatus" class="status"></p>
+            
+              </div>
+            </details>
+            
+            <div
+            id="detalleRepartoPanel"
+            class="block"
+            style="
+              display:none;
+              margin-top:12px;
+              max-width:100%;
+              overflow-x:auto;
+              box-sizing:border-box;
+            "
+          >
+              <div
+                style="
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  gap:10px;
+                "
+              >
+                <h3 style="margin:0;">Detalle del reparto</h3>
+            
+                <button
+                  type="button"
+                  id="cerrarDetalleRepartoBtn"
+                  class="ghost"
+                  style="width:auto;"
+                >
+                  Cerrar
+                </button>
+              </div>
+            
+              <div class="grid" style="margin-top:12px;">
+                <div class="pill">
+                  <strong>Folio:</strong>
+                  <span id="detalleRepartoId">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Fecha:</strong>
+                  <span id="detalleRepartoFecha">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Efectivo de cortes:</strong>
+                  <span id="detalleRepartoEfectivo">$0</span>
+                </div>
+                
+                <div class="pill">
+                  <strong>Transferencias:</strong>
+                  <span id="detalleRepartoTransferencias">$0</span>
+                </div>
+                
+                <div class="pill">
+                  <strong>Total de cortes:</strong>
+                  <span id="detalleRepartoTotalCortes">$0</span>
+                </div>
+                
+                <div class="pill">
+                  <strong>Total salidas en efectivo:</strong>
+                  <span id="detalleRepartoTotalSalidas">$0</span>
+                </div>
+                
+                <div class="pill">
+                  <strong>Efectivo restante:</strong>
+                  <span id="detalleRepartoEfectivoRestante">$0</span>
+                </div>
+                
+                <div class="pill">
+                  <strong>Restante total:</strong>
+                  <span id="detalleRepartoRestante">$0</span>
+                </div>
+                
+                </div>
+                
+                <div class="block" style="margin-top:12px;">
+                  <h3 style="margin:0 0 10px;">Cortes utilizados</h3>
+            
+                <div class="tableWrap" style="max-width:100%; overflow-x:auto;">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Empleado</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th>Total</th>
+                      </tr>
+                    </thead>
+            
+                    <tbody id="detalleRepartoCortesBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="block" style="margin-top:12px;">
+                <h3 style="margin:0 0 10px;">Salidas</h3>
+            
+                <div class="tableWrap" style="max-width:100%; overflow-x:auto;">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Concepto</th>
+                        <th>Monto</th>
+                      </tr>
+                    </thead>
+            
+                    <tbody id="detalleRepartoGastosBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
         <!-- ========================= -->
         <!-- TAB: ENCARGOS -->
         <!-- ========================= -->
@@ -1036,7 +1346,7 @@
                 
                     <tbody id="encargoArticulosBody">
                       <tr id="encargoArticulosEmpty">
-                        <td colspan="6" class="muted">
+                        <td colspan="9" class="muted">
                           Aún no agregas artículos.
                         </td>
                       </tr>
