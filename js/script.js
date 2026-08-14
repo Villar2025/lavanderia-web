@@ -1020,15 +1020,13 @@ async function generarCorteTurno() {
     return;
   }
 
-  corteStatus.textContent = "Generando corte...";
+  corteStatus.textContent = "Generando corte... consultando movimientos de caja";
 
   const { data, error } = await supabaseClient
-    .from("movimientos_caja")
-    .select("metodo_pago, monto, origen, created_at")
-    .eq("employee", employee)
-    .gte("created_at", inicioLocal.toISOString())
-    .lte("created_at", finLocal.toISOString())
-    .order("created_at", { ascending: true });
+  .from("movimientos_caja")
+  .select("metodo_pago, monto, origen, created_at")
+  .eq("employee", employee)
+  .limit(100);
 
   if (error) {
     console.error("Error al generar corte:", error);
@@ -1053,6 +1051,8 @@ async function generarCorteTurno() {
   }
 
   const totalCobrado = efectivo + transferencias;
+
+  corteStatus.textContent = "Generando corte... consultando fichas";
 
   const { data: fichasData, error: fichasError } = await supabaseClient
   .from("movimientos_fichas")
@@ -4716,4 +4716,3 @@ if (articulosError) {
 
   win.document.close();
 }
-
