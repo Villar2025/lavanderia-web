@@ -481,6 +481,8 @@ saleForm.addEventListener("submit", async (e) => {
       id: res.id,
       employee,
       date,
+      created_at: salePayload.created_at,
+      paymentMethod,
       items: salePayload.items,
       total,
       cash,
@@ -570,21 +572,54 @@ async function loadSales() {
     return;
   }
 
-  if (!data || data.length === 0) {
-    salesStatus.textContent = "No hay ventas con esos filtros.";
-    salesSummary.style.display = "none";
-    return;
-  }
 
   salesStatus.textContent = `Listo: ${data.length} venta(s).`;
 
   const totalVentas = data.length;
-  const totalIngreso = data.reduce((sum, v) => sum + Number(v.total), 0);
+const totalIngreso = data.reduce(
+  (sum, v) => sum + Number(v.total || 0),
+  0
+);
 
-  summaryCount.textContent = totalVentas;
-  summaryTotal.textContent = money(totalIngreso);
+let totalEfectivo = 0;
+let totalTransferencia = 0;
 
-  salesSummary.style.display = "block";
+const ventaIds = (data || []).map((v) => String(v.id));
+
+if (ventaIds.length > 0) {
+  const { data: movimientosCaja, error: movimientosCajaError } =
+    await supabaseClient
+      .from("movimientos_caja")
+      .select("metodo_pago, monto, referencia_id")
+      .eq("origen", "auto_servicio")
+      .in("referencia_id", ventaIds);
+
+  if (movimientosCajaError) {
+    console.error(
+      "Error al cargar movimientos de caja:",
+      movimientosCajaError
+    );
+  } else {
+    for (const movimiento of movimientosCaja || []) {
+      const monto = Number(movimiento.monto || 0);
+
+      if (movimiento.metodo_pago === "efectivo") {
+        totalEfectivo += monto;
+      }
+
+      if (movimiento.metodo_pago === "transferencia") {
+        totalTransferencia += monto;
+      }
+    }
+  }
+}
+
+summaryCount.textContent = totalVentas;
+summaryEfectivo.textContent = money(totalEfectivo);
+summaryTransferencia.textContent = money(totalTransferencia);
+summaryTotal.textContent = money(totalIngreso);
+
+salesSummary.style.display = "block";
 
   for (const v of data) {
     const tr = document.createElement("tr");
@@ -658,6 +693,8 @@ closeDetailBtn.addEventListener("click", () => {
 
 const salesSummary = $("#salesSummary");
 const summaryCount = $("#summaryCount");
+const summaryEfectivo = $("#summaryEfectivo");
+const summaryTransferencia = $("#summaryTransferencia");
 const summaryTotal = $("#summaryTotal");
 
 // =====================
@@ -2064,6 +2101,7 @@ const loadEncargosBtn = $("#loadEncargosBtn");
 const encargosBody = $("#encargosBody");
 const encargosListStatus = $("#encargosListStatus");
 
+const encargosListBlock = $("#encargosListBlock");
 const encargoDetailPanel = $("#encargoDetailPanel");
 const closeEncargoDetailBtn = $("#closeEncargoDetailBtn");
 const saveEncargoUsageBtn = $("#saveEncargoUsageBtn");
@@ -2073,6 +2111,7 @@ const detailEncargoId = $("#detailEncargoId");
 const detailEncargoCliente = $("#detailEncargoCliente");
 const detailEncargoEmpleado = $("#detailEncargoEmpleado");
 const detailEncargoTotal = $("#detailEncargoTotal");
+const detailUsoEmployee = $("#detailUsoEmployee");
 
 const useLav16 = $("#useLav16");
 const useLav9 = $("#useLav9");
@@ -2100,6 +2139,20 @@ const detailPaymentResult = $("#detailPaymentResult");
 let currentEncargoId = null;
 let currentEncargoTotal = 0;
 let currentEncargoPaid = 0;
+
+let usoAnteriorEncargo = {
+  lav16: 0,
+  lav9: 0,
+  lav4: 0,
+  sec15: 0,
+  sec30: 0,
+  jabon: 0,
+  suavizante: 0,
+  desmugrante: 0,
+  bolsaChica: 0,
+  bolsaMediana: 0,
+  bolsaGrande: 0
+};
 
 (function setDefaultEncargoFilters() {
   const today = saleDateEl.value;
@@ -2301,6 +2354,8 @@ async function loadEncargosList() {
 
 async function openEncargoDetail(id) {
   ensureSupabase();
+
+  detailUsoEmployee.value = "";
   
   currentEncargoId = id;
   encargoDetailStatus.textContent = "";
@@ -2342,6 +2397,23 @@ async function openEncargoDetail(id) {
   useBolsaMediana.value = Number(data.used_bolsa_mediana || 0);
   useBolsaGrande.value = Number(data.used_bolsa_grande || 0);
 
+  usoAnteriorEncargo = {
+    lav16: Number(data.used_lavadora_16 || 0),
+    lav9: Number(data.used_lavadora_9 || 0),
+    lav4: Number(data.used_lavadora_4 || 0),
+  
+    sec15: Number(data.used_secadora_15 || 0),
+    sec30: Number(data.used_secadora_30 || 0),
+  
+    jabon: Number(data.used_jabon || 0),
+    suavizante: Number(data.used_suavizante || 0),
+    desmugrante: Number(data.used_desmugrante || 0),
+  
+    bolsaChica: Number(data.used_bolsa_chica || 0),
+    bolsaMediana: Number(data.used_bolsa_mediana || 0),
+    bolsaGrande: Number(data.used_bolsa_grande || 0)
+  };
+
   detailPaymentStatus.value = data.payment_status || "pagado";
   currentEncargoPaid = Number(data.amount_paid || 0);
   detailAmountPaid.value = currentEncargoPaid;
@@ -2367,6 +2439,12 @@ if (detailDelivered) {
 
 async function saveEncargoUsageAndDelivery() {
   ensureSupabase();
+
+  if (!detailUsoEmployee.value) {
+    encargoDetailStatus.textContent =
+      "Selecciona el empleado que está registrando el uso.";
+    return;
+  }
 
   if (!currentEncargoId) {
     encargoDetailStatus.textContent = "No hay encargo seleccionado.";
@@ -2444,7 +2522,7 @@ function agregarFichaEncargo(concepto, cantidad) {
 
   if (qty > 0) {
     fichasEncargoRows.push({
-      employee: detailEncargoEmpleado.textContent.trim(),
+      employee: detailUsoEmployee.value,
       origen: "encargo",
       concepto,
       cantidad: qty,
@@ -2453,27 +2531,63 @@ function agregarFichaEncargo(concepto, cantidad) {
   }
 }
 
-agregarFichaEncargo("Lavadora 16 kg", useLav16.value);
-agregarFichaEncargo("Lavadora 9 kg", useLav9.value);
-agregarFichaEncargo("Lavadora 4 kg", useLav4.value);
+agregarFichaEncargo(
+  "Lavadora 16 kg",
+  Number(useLav16.value || 0) - usoAnteriorEncargo.lav16
+);
+
+agregarFichaEncargo(
+  "Lavadora 9 kg",
+  Number(useLav9.value || 0) - usoAnteriorEncargo.lav9
+);
+
+agregarFichaEncargo(
+  "Lavadora 4 kg",
+  Number(useLav4.value || 0) - usoAnteriorEncargo.lav4
+);
 
 agregarFichaEncargo(
   "Secadora 9 kg (15 min)",
-  useSec15.value
+  Number(useSec15.value || 0) - usoAnteriorEncargo.sec15
 );
 
 agregarFichaEncargo(
   "Secadora 9 kg (30 min)",
-  Number(useSec30.value || 0) * 2
+  (
+    Number(useSec30.value || 0) -
+    usoAnteriorEncargo.sec30
+  ) * 2
 );
 
-agregarFichaEncargo("1 medida de jabón", useJabon.value);
-agregarFichaEncargo("1 medida de suavizante", useSuavizante.value);
-agregarFichaEncargo("1 medida de desmugrante", useDesmugrante.value);
+agregarFichaEncargo(
+  "1 medida de jabón",
+  Number(useJabon.value || 0) - usoAnteriorEncargo.jabon
+);
 
-agregarFichaEncargo("Bolsa chica", useBolsaChica.value);
-agregarFichaEncargo("Bolsa mediana", useBolsaMediana.value);
-agregarFichaEncargo("Bolsa grande", useBolsaGrande.value);
+agregarFichaEncargo(
+  "1 medida de suavizante",
+  Number(useSuavizante.value || 0) - usoAnteriorEncargo.suavizante
+);
+
+agregarFichaEncargo(
+  "1 medida de desmugrante",
+  Number(useDesmugrante.value || 0) - usoAnteriorEncargo.desmugrante
+);
+
+agregarFichaEncargo(
+  "Bolsa chica",
+  Number(useBolsaChica.value || 0) - usoAnteriorEncargo.bolsaChica
+);
+
+agregarFichaEncargo(
+  "Bolsa mediana",
+  Number(useBolsaMediana.value || 0) - usoAnteriorEncargo.bolsaMediana
+);
+
+agregarFichaEncargo(
+  "Bolsa grande",
+  Number(useBolsaGrande.value || 0) - usoAnteriorEncargo.bolsaGrande
+);
 
 if (fichasEncargoRows.length > 0) {
   const { error: fichasEncargoError } = await supabaseClient
@@ -2493,6 +2607,23 @@ if (fichasEncargoRows.length > 0) {
   }
 }
 
+usoAnteriorEncargo = {
+  lav16: Number(useLav16.value || 0),
+  lav9: Number(useLav9.value || 0),
+  lav4: Number(useLav4.value || 0),
+
+  sec15: Number(useSec15.value || 0),
+  sec30: Number(useSec30.value || 0),
+
+  jabon: Number(useJabon.value || 0),
+  suavizante: Number(useSuavizante.value || 0),
+  desmugrante: Number(useDesmugrante.value || 0),
+
+  bolsaChica: Number(useBolsaChica.value || 0),
+  bolsaMediana: Number(useBolsaMediana.value || 0),
+  bolsaGrande: Number(useBolsaGrande.value || 0)
+};
+
   if (abonoHoy > 0) {
     const pendienteAntes = Math.max(
       total - Number(currentEncargoPaid || 0),
@@ -2506,7 +2637,7 @@ if (fichasEncargoRows.length > 0) {
   
     if (montoAbonoReal > 0) {
       const employeeAbono =
-        detailEncargoEmpleado.textContent.trim();
+        detailUsoEmployee.value;
   
       const { error: movimientoAbonoError } = await supabaseClient
         .from("movimientos_caja")
@@ -2555,8 +2686,24 @@ if (encargosBody) {
     if (!btn) return;
 
     const openId = btn.dataset.openEncargo;
+
     if (openId) {
       openEncargoDetail(openId);
+    
+      encargoDetailPanel.style.display = "block";
+      encargoDetailPanel.open = true;
+    
+      if (encargosListBlock) {
+        encargosListBlock.open = false;
+      }
+    
+      const encargoRegistroBlock =
+        document.getElementById("encargoRegistroBlock");
+    
+      if (encargoRegistroBlock) {
+        encargoRegistroBlock.open = false;
+      }
+    
       return;
     }
 
@@ -2570,10 +2717,16 @@ if (encargosBody) {
 
 if (closeEncargoDetailBtn) {
   closeEncargoDetailBtn.addEventListener("click", () => {
+    encargoDetailPanel.open = false;
     encargoDetailPanel.style.display = "none";
+
     currentEncargoId = null;
     currentEncargoTotal = 0;
     encargoDetailStatus.textContent = "";
+
+    if (encargosListBlock) {
+      encargosListBlock.open = true;
+    }
   });
 }
 
@@ -2612,9 +2765,10 @@ const viewEncargosStatus = $("#viewEncargosStatus");
 const viewEncargosSummary = $("#viewEncargosSummary");
 const viewEncargosSummaryCount = $("#viewEncargosSummaryCount");
 const viewEncargosSummaryTotal = $("#viewEncargosSummaryTotal");
+const viewEncargosSummaryEfectivo = $("#viewEncargosSummaryEfectivo");
+const viewEncargosSummaryTransferencia = $("#viewEncargosSummaryTransferencia");
 const viewEncargosSummaryPaid = $("#viewEncargosSummaryPaid");
 const viewEncargosSummaryDue = $("#viewEncargosSummaryDue");
-const viewEncargosSummaryCambio = $("#viewEncargosSummaryCambio");
 
 const loadUsageSummaryBtn = $("#loadUsageSummaryBtn");
 const clearUsageFiltersBtn = $("#clearUsageFiltersBtn");
@@ -2761,10 +2915,6 @@ async function loadViewEncargos() {
     q = q.lte("created_at", localDateEndISO(viewEncargoToDate.value));
   }
 
-  if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
-    q = q.eq("employee", viewEncargoEmployeeFilter.value);
-  }
-
   const { data, error } = await q;
 
   if (error) {
@@ -2778,47 +2928,170 @@ async function loadViewEncargos() {
     return;
   }
 
-  const totalEncargos = data.length;
+  let movimientosCajaQuery = supabaseClient
+  .from("movimientos_caja")
+  .select("employee, origen, monto, metodo_pago, referencia_id, created_at")
+  .in("origen", ["encargo", "abono_encargo"]);
+
+if (viewEncargoFromDate && viewEncargoFromDate.value) {
+  movimientosCajaQuery = movimientosCajaQuery.gte(
+    "created_at",
+    localDateStartISO(viewEncargoFromDate.value)
+  );
+}
+
+if (viewEncargoToDate && viewEncargoToDate.value) {
+  movimientosCajaQuery = movimientosCajaQuery.lte(
+    "created_at",
+    localDateEndISO(viewEncargoToDate.value)
+  );
+}
+
+if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
+  movimientosCajaQuery = movimientosCajaQuery.eq(
+    "employee",
+    viewEncargoEmployeeFilter.value
+  );
+}
+
+const {
+  data: movimientosCajaData,
+  error: movimientosCajaError
+} = await movimientosCajaQuery;
+
+if (movimientosCajaError) {
+  console.error(movimientosCajaError);
+
+  viewEncargosStatus.textContent =
+    `❌ Error al cargar abonos: ${movimientosCajaError.message}`;
+
+  return;
+}
+
+const totalCobradoEmpleado = (movimientosCajaData || []).reduce(
+  (suma, movimiento) =>
+    suma + Number(movimiento.monto || 0),
+  0
+);
+
+const totalEfectivoEncargos = (movimientosCajaData || []).reduce(
+  (suma, movimiento) =>
+    movimiento.metodo_pago === "efectivo"
+      ? suma + Number(movimiento.monto || 0)
+      : suma,
+  0
+);
+
+const totalTransferenciaEncargos = (movimientosCajaData || []).reduce(
+  (suma, movimiento) =>
+    movimiento.metodo_pago === "transferencia"
+      ? suma + Number(movimiento.monto || 0)
+      : suma,
+  0
+);
+
+const empleadoSeleccionado =
+  viewEncargoEmployeeFilter &&
+  viewEncargoEmployeeFilter.value
+    ? viewEncargoEmployeeFilter.value
+    : "";
+
+const idsEncargosEmpleado = new Set(
+  (movimientosCajaData || [])
+    .map((movimiento) => String(movimiento.referencia_id || ""))
+    .filter(Boolean)
+);
+
+const dataFiltrada = empleadoSeleccionado
+  ? (data || []).filter((row) =>
+      String(row.employee || "") === empleadoSeleccionado ||
+      idsEncargosEmpleado.has(String(row.id))
+    )
+  : (data || []);
+
+  if (!dataFiltrada || dataFiltrada.length === 0) {
+    viewEncargosStatus.textContent =
+      "No hay encargos con esos filtros.";
+    return;
+  }
+
+  const totalEncargos = dataFiltrada.length;
 
   let totalVendido = 0;
   let totalCobrado = 0;
   let totalPorCobrar = 0;
   let totalCambio = 0;
 
-  for (const row of data) {
+  for (const row of dataFiltrada) {
     const total = Number(row.total || 0);
-    const pagado = Number(row.amount_paid || 0);
-
-    const porCobrar = Math.max(total - pagado, 0);
-    const cambio = Math.max(pagado - total, 0);
-
+    const pagadoAcumulado = Number(row.amount_paid || 0);
+  
+    const porCobrar = Math.max(total - pagadoAcumulado, 0);
+    const cambio = Math.max(pagadoAcumulado - total, 0);
+  
     totalVendido += total;
-    totalCobrado += pagado;
     totalPorCobrar += porCobrar;
     totalCambio += cambio;
   }
 
-  viewEncargosSummaryCount.textContent = totalEncargos;
-  viewEncargosSummaryTotal.textContent = money(totalVendido);
-  viewEncargosSummaryPaid.textContent = money(totalCobrado);
-  viewEncargosSummaryDue.textContent = money(totalPorCobrar);
-  if (viewEncargosSummaryCambio) {
-    viewEncargosSummaryCambio.textContent = money(totalCambio);
+  if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
+    totalCobrado = totalCobradoEmpleado;
+  } else {
+    totalCobrado = dataFiltrada.reduce(
+      (suma, row) =>
+        suma + Number(row.amount_paid || 0),
+      0
+    );
   }
-  viewEncargosSummary.style.display = "block";
+
+  viewEncargosSummaryCount.textContent = totalEncargos;
+viewEncargosSummaryTotal.textContent = money(totalVendido);
+
+viewEncargosSummaryEfectivo.textContent =
+  money(totalEfectivoEncargos);
+
+viewEncargosSummaryTransferencia.textContent =
+  money(totalTransferenciaEncargos);
+
+viewEncargosSummaryPaid.textContent = money(totalCobrado);
+viewEncargosSummaryDue.textContent = money(totalPorCobrar);
+
+viewEncargosSummary.style.display = "block";
 
   viewEncargosStatus.textContent = `Listo: ${totalEncargos} encargo(s).`;
 
-  for (const row of data) {
+  for (const row of dataFiltrada) {
     const total = Number(row.total || 0);
     const pagado = Number(row.amount_paid || 0);
     const porCobrar = Math.max(total - pagado, 0);
     const cambio = Math.max(pagado - total, 0);
 
+    const cobradoPorEmpleadoSeleccionado = empleadoSeleccionado
+  ? (movimientosCajaData || [])
+      .filter(
+        (movimiento) =>
+          String(movimiento.referencia_id || "") === String(row.id)
+      )
+      .reduce(
+        (suma, movimiento) =>
+          suma + Number(movimiento.monto || 0),
+        0
+      )
+  : 0;
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${formatDateTime(row.created_at)}</td>
-      <td>${row.employee || ""}</td>
+      <td>
+  <strong>${row.employee || ""}</strong>
+  ${
+    empleadoSeleccionado &&
+    empleadoSeleccionado !== String(row.employee || "") &&
+    cobradoPorEmpleadoSeleccionado > 0
+      ? `<br><small>Cobró ${empleadoSeleccionado}: ${money(cobradoPorEmpleadoSeleccionado)}</small>`
+      : ""
+  }
+</td>
       <td>${row.client_name || ""}</td>
       <td>${row.client_phone || ""}</td>
       <td>${humanDeliveredStatus(row.delivered_status)}</td>
@@ -3100,30 +3373,56 @@ async function loadUsageSummary() {
 
   const { data: encargosData, error: encargosError } = await encargosQuery;
 
-  if (encargosError) {
-    console.error(encargosError);
-    usageSummaryStatus.textContent = `❌ Error al cargar encargos: ${encargosError.message}`;
-    return;
+  let fichasEncargosQuery = supabaseClient
+  .from("movimientos_fichas")
+  .select("employee, concepto, cantidad, created_at")
+  .eq("origen", "encargo");
+
+if (usageFromDate.value) {
+  fichasEncargosQuery = fichasEncargosQuery.gte(
+    "created_at",
+    localDateStartISO(usageFromDate.value)
+  );
+}
+
+if (usageToDate.value) {
+  fichasEncargosQuery = fichasEncargosQuery.lte(
+    "created_at",
+    localDateEndISO(usageToDate.value)
+  );
+}
+
+if (usageEmployeeFilter.value) {
+  fichasEncargosQuery = fichasEncargosQuery.eq(
+    "employee",
+    usageEmployeeFilter.value
+  );
+}
+
+const {
+  data: fichasEncargosData,
+  error: fichasEncargosError
+} = await fichasEncargosQuery;
+
+if (fichasEncargosError) {
+  console.error(fichasEncargosError);
+
+  usageSummaryStatus.textContent =
+    `❌ Error al cargar fichas de encargos: ${fichasEncargosError.message}`;
+
+  return;
+}
+
+const encargosUsage = createEmptyUsageMap();
+
+for (const row of fichasEncargosData || []) {
+  const concepto = row.concepto;
+  const cantidad = Number(row.cantidad || 0);
+
+  if (Object.prototype.hasOwnProperty.call(encargosUsage, concepto)) {
+    encargosUsage[concepto] += cantidad;
   }
-
-  const encargosUsage = createEmptyUsageMap();
-
-  for (const row of encargosData || []) {
-    encargosUsage["Lavadora 16 kg"] += Number(row.used_lavadora_16 || 0);
-    encargosUsage["Lavadora 9 kg"] += Number(row.used_lavadora_9 || 0);
-    encargosUsage["Lavadora 4 kg"] += Number(row.used_lavadora_4 || 0);
-
-    encargosUsage["Secadora 9 kg (15 min)"] += Number(row.used_secadora_15 || 0);
-    encargosUsage["Secadora 9 kg (30 min)"] += Number(row.used_secadora_30 || 0) * 2;
-
-    encargosUsage["1 medida de jabón"] += Number(row.used_jabon || 0);
-    encargosUsage["1 medida de suavizante"] += Number(row.used_suavizante || 0);
-    encargosUsage["1 medida de desmugrante"] += Number(row.used_desmugrante || 0);
-
-    encargosUsage["Bolsa chica"] += Number(row.used_bolsa_chica || 0);
-    encargosUsage["Bolsa mediana"] += Number(row.used_bolsa_mediana || 0);
-    encargosUsage["Bolsa grande"] += Number(row.used_bolsa_grande || 0);
-  }
+}
 
   // =========================
   // TOTAL
@@ -3222,67 +3521,238 @@ printTicketBtn.addEventListener("click", () => {
     return;
   }
 
-  const itemsHTML = lastSaved.items.map(item => `
-    <div style="margin:8px 0;">
-      ${item.name}<br>x${item.qty}
-      <div>${money(item.subtotal)}</div>
-    </div>
-  `).join("");
+  const metodoPago =
+    lastSaved.paymentMethod === "transferencia"
+      ? "Transferencia"
+      : "Efectivo";
 
-  const win = window.open("", "_blank", "width=300,height=600");
+  const fechaHora = lastSaved.created_at
+    ? formatDateTime(lastSaved.created_at)
+    : formatDate(lastSaved.date);
+
+  const esTransferencia =
+    lastSaved.paymentMethod === "transferencia";
+
+  const cambioTicket = esTransferencia
+    ? 0
+    : Number(lastSaved.change || 0);
+
+  const itemsHTML = lastSaved.items
+    .map(
+      (item) => `
+        <div class="item">
+          <div class="itemNombre">${item.name}</div>
+          <div class="itemDatos">
+            <span>${item.qty} x ${money(item.price)}</span>
+            <strong>${money(item.subtotal)}</strong>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+
+  const win = window.open("", "_blank", "width=300,height=650");
+
+  if (!win) {
+    alert("El navegador bloqueó la ventana.");
+    return;
+  }
 
   win.document.write(`
     <!DOCTYPE html>
-    <html>
+    <html lang="es">
       <head>
-        <title>Ticket</title>
+        <meta charset="UTF-8">
+
+        <title>Ticket Auto servicio</title>
+
+        <style>
+          @page {
+            size: 58mm auto;
+            margin: 0;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            color: black;
+          }
+
+          body {
+            width: 54mm;
+            padding: 1.5mm;
+            font-family: monospace;
+            font-size: 10px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+          }
+
+          .centro {
+            text-align: center;
+          }
+
+          .titulo {
+            font-size: 14px;
+            font-weight: bold;
+          }
+
+          .subtitulo {
+            font-size: 10px;
+          }
+
+          .linea {
+            border-top: 1px dashed #000;
+            margin: 5px 0;
+          }
+
+          .dato {
+            margin: 2px 0;
+          }
+
+          .folio {
+            overflow-wrap: anywhere;
+            word-break: break-all;
+          }
+
+          .encabezadoItems {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 3px;
+          }
+
+          .item {
+            margin: 4px 0;
+          }
+
+          .itemNombre {
+            font-weight: bold;
+          }
+
+          .itemDatos {
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
+          }
+
+          .resumen {
+            margin-top: 3px;
+          }
+
+          .filaTotal {
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
+            margin: 2px 0;
+          }
+
+          .totalPrincipal {
+            font-size: 12px;
+            font-weight: bold;
+          }
+
+          .gracias {
+            text-align: center;
+            margin-top: 6px;
+          }
+
+          .imprimirBtn {
+            width: 100%;
+            padding: 8px;
+            margin-top: 12px;
+            font-size: 12px;
+          }
+
+          @media print {
+            .imprimirBtn {
+              display: none;
+            }
+          }
+        </style>
       </head>
 
-      <body style="
-        margin:0;
-        padding:10px;
-        font-family: monospace;
-        font-size:14px;
-        width:220px;
-        background:white;
-        color:black;
-      ">
+      <body>
 
-        <div style="text-align:center;">
-          <div style="font-size:16px;font-weight:bold;">SPEED WASH</div>
-          <div>Ticket de venta</div>
+        <div class="centro">
+          <div class="titulo">SPEED WASH</div>
+          <div class="subtitulo">Ticket de Auto servicio</div>
         </div>
 
-        <div>-------------------------</div>
+        <div class="linea"></div>
 
-        <div><b>Folio:</b> ${lastSaved.id}</div>
-        <div><b>Fecha:</b> ${formatDate(lastSaved.date)}</div>
-        <div><b>Empleado:</b> ${lastSaved.employee}</div>
+        <div class="dato folio">
+          <b>Folio:</b> ${lastSaved.id}
+        </div>
 
-        <div>-------------------------</div>
+        <div class="dato">
+          <b>Fecha/Hora:</b> ${fechaHora}
+        </div>
 
-        <div><b>Prod. Cant. Imp.</b></div>
+        <div class="dato">
+          <b>Empleado:</b> ${lastSaved.employee}
+        </div>
+
+        <div class="dato">
+          <b>Método:</b> ${metodoPago}
+        </div>
+
+        <div class="linea"></div>
+
+        <div class="encabezadoItems">
+          <span>Producto / Cant.</span>
+          <span>Importe</span>
+        </div>
 
         ${itemsHTML}
 
-        <div>-------------------------</div>
+        <div class="linea"></div>
 
-        <div style="font-weight:bold;">TOTAL</div>
-        <div style="font-size:16px;font-weight:bold;">${money(lastSaved.total)}</div>
+        <div class="resumen">
 
-        <div style="font-weight:bold;">EFECTIVO</div>
-        <div style="font-size:16px;font-weight:bold;">${money(lastSaved.cash)}</div>
+          <div class="filaTotal totalPrincipal">
+            <span>TOTAL</span>
+            <span>${money(lastSaved.total)}</span>
+          </div>
 
-        <div style="font-weight:bold;">CAMBIO</div>
-        <div style="font-size:16px;font-weight:bold;">${money(lastSaved.change)}</div>
+          ${
+            esTransferencia
+              ? `
+                <div class="filaTotal">
+                  <span>TRANSFERENCIA</span>
+                  <span>${money(lastSaved.total)}</span>
+                </div>
+              `
+              : `
+                <div class="filaTotal">
+                  <span>EFECTIVO</span>
+                  <span>${money(lastSaved.cash)}</span>
+                </div>
+              `
+          }
 
-        <div>-------------------------</div>
+          <div class="filaTotal">
+            <span>CAMBIO</span>
+            <span>${money(cambioTicket)}</span>
+          </div>
 
-        <div style="text-align:center;">Gracias por su compra</div>
+        </div>
 
-        <br><br>
+        <div class="linea"></div>
 
-        <button onclick="window.print()" style="width:100%;padding:10px;">
+        <div class="gracias">
+          Gracias por su compra
+        </div>
+
+        <button
+          class="imprimirBtn"
+          onclick="window.print()"
+        >
           Imprimir
         </button>
 
@@ -3331,7 +3801,17 @@ if (articulosError) {
   const pagado = Number(data.amount_paid || 0);
   const cambio = Math.max(pagado - total, 0);
   const resta = Math.max(total - pagado, 0);
-  const esTransferencia = data.payment_status === "transferencia";
+
+  const estadoPagoTicket =
+  resta <= 0
+    ? "Pagado"
+    : "Pendiente / Adelanto";
+  
+    const esTransferencia = data.payment_status === "transferencia";
+
+  const metodoPagoTicket = esTransferencia
+  ? "Transferencia"
+  : "Efectivo";
 
   const cambioTicket = esTransferencia
     ? 0
@@ -3386,8 +3866,8 @@ if (articulosError) {
       <div>Servicio Express</div>
   
       ${Number(data.express_kilos || 0) > 0
-  ? `<div>Kilos: ${data.express_kilos} kg ${Number(data.express_kilos || 0) < 4 ? "(mínimo aplicado)" : ""}</div>`
-  : ""}
+        ? `<div>Kilos: ${data.express_kilos} kg ${Number(data.express_kilos || 0) < 4 ? "(mínimo aplicado)" : ""}</div>`
+        : ""}
   
       <div>${money(expressPrice)}</div>
     </div>
@@ -3463,51 +3943,64 @@ if (articulosError) {
       </head>
 
       <body style="
-        margin:0;
-        padding:10px;
-        font-family: monospace;
-        font-size:14px;
-        width:220px;
-        background:white;
-        color:black;
-      ">
+  margin:0;
+  padding:6px;
+  font-family:monospace;
+  font-size:10px;
+  line-height:1.25;
+  width:204px;
+  max-width:204px;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  background:white;
+  color:black;
+">
 
         <div style="text-align:center;">
-          <div style="font-size:16px;font-weight:bold;">Speed Wash</div>
+          <div style="font-size:14px;font-weight:bold;">Speed Wash</div>
           <div>Encargo</div>
         </div>
 
-        <div>-------------------------</div>
+        <div style="border-top:1px dashed #000;margin:5px 0;"></div>
 
         <div><b>Folio:</b> ${data.id}</div>
         <div><b>Fecha:</b> ${formatDateTime(data.created_at)}</div>
         <div><b>Empleado:</b> ${data.employee || "-"}</div>
         <div><b>Cliente:</b> ${data.client_name || "-"}</div>
 
-        <div>-------------------------</div>
+        <div style="border-top:1px dashed #000;margin:5px 0;"></div>
 
         ${serviciosHTML}
 
-        <div>-------------------------</div>
+        <div style="border-top:1px dashed #000;margin:5px 0;"></div>
 
-        <div style="font-weight:bold;">TOTAL</div>
-        <div style="font-size:16px;font-weight:bold;">${money(total)}</div>
+<div style="display:flex;justify-content:space-between;gap:6px;padding-right:24px;font-size:12px;font-weight:bold;">
+  <span>TOTAL</span>
+  <span>${money(total)}</span>
+</div>
 
-        <div style="font-weight:bold;">ADELANTO</div>
-        <div style="font-size:16px;font-weight:bold;">${money(pagado)}</div>
+<div style="display:flex;justify-content:space-between;gap:6px;padding-right:24px;">
+  <span>ADELANTO</span>
+  <span>${money(pagado)}</span>
+</div>
 
-        <div style="font-weight:bold;">RESTA</div>
-        <div style="font-size:16px;font-weight:bold;">${money(resta)}</div>
+<div style="display:flex;justify-content:space-between;gap:6px;padding-right:24px;">
+  <span>RESTA</span>
+  <span>${money(resta)}</span>
+</div>
 
-        <div style="font-weight:bold;">CAMBIO</div>
-        <div style="font-size:16px;font-weight:bold;">${money(cambioTicket)}</div>
+<div style="display:flex;justify-content:space-between;gap:6px;padding-right:24px;">
+  <span>CAMBIO</span>
+  <span>${money(cambioTicket)}</span>
+</div>
 
-        <div>-------------------------</div>
+<div style="border-top:1px dashed #000;margin:5px 0;"></div>
 
-        <div><b>Estado:</b> ${humanDeliveredStatus(data.delivered_status)}</div>
-        <div><b>Pago:</b> ${humanPaymentStatus(data.payment_status)}</div>
+       <div><b>Estado:</b> ${humanDeliveredStatus(data.delivered_status)}</div>
+       <div><b>Pago:</b> ${estadoPagoTicket}</div>
+       <div><b>Método:</b> ${metodoPagoTicket}</div>
 
-        <div>-------------------------</div>
+        <div style="border-top:1px dashed #000;margin:5px 0;"></div>
 
         <div style="text-align:center;">Gracias por su preferencia</div>
 
@@ -3523,5 +4016,4 @@ if (articulosError) {
 
   win.document.close();
 }
-
 
