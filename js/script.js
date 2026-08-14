@@ -816,6 +816,54 @@ const btnConsultaAutoServicio = $("#btnConsultaAutoServicio");
 const btnConsultaEncargos = $("#btnConsultaEncargos");
 const btnConsultaResumen = $("#btnConsultaResumen");
 
+const btnGastosReparto = $("#btnGastosReparto");
+const consultaGastosReparto = $("#consultaGastosReparto");
+
+const repartoCortesBody = $("#repartoCortesBody");
+const repartoCortesStatus = $("#repartoCortesStatus");
+
+const repartoEfectivo = $("#repartoEfectivo");
+const repartoTransferencias = $("#repartoTransferencias");
+
+const repartoGranTotal = $("#repartoGranTotal");
+const repartoTotalSalidas = $("#repartoTotalSalidas");
+const repartoEfectivoRestante = $("#repartoEfectivoRestante");
+const repartoRestante = $("#repartoRestante");
+
+const repartoConcepto = $("#repartoConcepto");
+const repartoMonto = $("#repartoMonto");
+
+const agregarGastoRepartoBtn = $("#agregarGastoRepartoBtn");
+const repartoGastosBody = $("#repartoGastosBody");
+const guardarRepartoBtn = $("#guardarRepartoBtn");
+const repartoStatus = $("#repartoStatus");
+
+const cargarHistorialRepartosBtn = $("#cargarHistorialRepartosBtn");
+const historialRepartosBody = $("#historialRepartosBody");
+const historialRepartosStatus = $("#historialRepartosStatus");
+
+const detalleRepartoPanel = $("#detalleRepartoPanel");
+const cerrarDetalleRepartoBtn = $("#cerrarDetalleRepartoBtn");
+
+const detalleRepartoId = $("#detalleRepartoId");
+const detalleRepartoFecha = $("#detalleRepartoFecha");
+
+const detalleRepartoEfectivo = $("#detalleRepartoEfectivo");
+const detalleRepartoTransferencias = $("#detalleRepartoTransferencias");
+
+const detalleRepartoTotalCortes = $("#detalleRepartoTotalCortes");
+const detalleRepartoTotalSalidas = $("#detalleRepartoTotalSalidas");
+
+const detalleRepartoEfectivoRestante = $("#detalleRepartoEfectivoRestante");
+const detalleRepartoRestante = $("#detalleRepartoRestante");
+
+const detalleRepartoCortesBody = $("#detalleRepartoCortesBody");
+const detalleRepartoGastosBody = $("#detalleRepartoGastosBody");
+
+let cortesDisponiblesReparto = [];
+let cortesSeleccionadosReparto = [];
+let gastosReparto = [];
+
 const openCorteTurnoBtn = $("#openCorteTurnoBtn");
 const consultaCorteTurno = $("#consultaCorteTurno");
 
@@ -877,6 +925,9 @@ function mostrarConsulta(tipo) {
   consultaCorteTurno.style.display =
     tipo === "corte" ? "" : "none";
 
+  consultaGastosReparto.style.display =
+    tipo === "gastos" ? "" : "none";
+
   btnConsultaAutoServicio.classList.toggle(
     "active",
     tipo === "auto"
@@ -896,6 +947,11 @@ function mostrarConsulta(tipo) {
     "active",
     tipo === "corte"
   );
+
+  btnGastosReparto.classList.toggle(
+    "active",
+    tipo === "gastos"
+  );
 }
 
 btnConsultaAutoServicio.addEventListener("click", () => {
@@ -912,6 +968,11 @@ btnConsultaResumen.addEventListener("click", () => {
 
 openCorteTurnoBtn.addEventListener("click", () => {
   mostrarConsulta("corte");
+});
+
+btnGastosReparto.addEventListener("click", () => {
+  mostrarConsulta("gastos");
+  cargarCortesDisponiblesReparto();
 });
 
 async function generarCorteTurno() {
@@ -1242,6 +1303,645 @@ async function cargarHistorialCortes() {
 
     historialCortesBody.appendChild(tr);
   }
+}
+
+async function cargarCortesDisponiblesReparto() {
+  ensureSupabase();
+
+  repartoCortesStatus.textContent = "Cargando cortes disponibles...";
+  repartoCortesBody.innerHTML = "";
+
+  cortesDisponiblesReparto = [];
+  cortesSeleccionadosReparto = [];
+
+  repartoGranTotal.textContent = money(0);
+  repartoTotalSalidas.textContent = money(0);
+  repartoRestante.textContent = money(0);
+
+  // 1. Saber qué cortes ya fueron usados en un reparto
+  const { data: cortesUsados, error: cortesUsadosError } =
+    await supabaseClient
+      .from("reparto_cortes_detalle")
+      .select("corte_id");
+
+  if (cortesUsadosError) {
+    console.error(cortesUsadosError);
+    repartoCortesStatus.textContent =
+      `❌ Error al revisar cortes usados: ${cortesUsadosError.message}`;
+    return;
+  }
+
+  const idsUsados = new Set(
+    (cortesUsados || []).map((row) => String(row.corte_id))
+  );
+
+  // 2. Cargar todos los cortes cerrados
+  const { data: cortes, error: cortesError } =
+    await supabaseClient
+      .from("cortes_turno")
+      .select(`
+        id,
+        employee,
+        inicio,
+        fin,
+        efectivo,
+        transferencias,
+        total_cobrado,
+        created_at
+      `)
+      .order("created_at", { ascending: false });
+
+  if (cortesError) {
+    console.error(cortesError);
+    repartoCortesStatus.textContent =
+      `❌ Error al cargar cortes: ${cortesError.message}`;
+    return;
+  }
+
+  // 3. Quitar los cortes que ya pertenecen a otro reparto
+  cortesDisponiblesReparto = (cortes || []).filter(
+    (corte) => !idsUsados.has(String(corte.id))
+  );
+
+  if (cortesDisponiblesReparto.length === 0) {
+    repartoCortesBody.innerHTML = `
+      <tr>
+        <td colspan="7" class="muted">
+          No hay cortes disponibles para repartir.
+        </td>
+      </tr>
+    `;
+
+    repartoCortesStatus.textContent =
+      "No hay cortes cerrados disponibles.";
+    return;
+  }
+
+  // 4. Mostrar los cortes disponibles
+  repartoCortesBody.innerHTML = cortesDisponiblesReparto
+    .map(
+      (corte) => `
+        <tr>
+          <td>
+            <input
+              type="checkbox"
+              class="repartoCorteCheck"
+              data-corte-id="${corte.id}"
+            />
+          </td>
+
+          <td>${corte.employee || "-"}</td>
+
+          <td>${formatDateTime(corte.inicio)}</td>
+
+          <td>${formatDateTime(corte.fin)}</td>
+
+          <td>${money(Number(corte.efectivo || 0))}</td>
+
+          <td>${money(Number(corte.transferencias || 0))}</td>
+
+          <td><strong>${money(Number(corte.total_cobrado || 0))}</strong></td>
+        </tr>
+      `
+    )
+    .join("");
+
+  repartoCortesStatus.textContent =
+    `${cortesDisponiblesReparto.length} corte(s) disponible(s).`;
+}
+
+function actualizarTotalesReparto() {
+  cortesSeleccionadosReparto = [];
+
+  const checks = document.querySelectorAll(".repartoCorteCheck:checked");
+
+  for (const check of checks) {
+    const corteId = String(check.dataset.corteId);
+
+    const corte = cortesDisponiblesReparto.find(
+      (item) => String(item.id) === corteId
+    );
+
+    if (corte) {
+      cortesSeleccionadosReparto.push(corte);
+    }
+  }
+
+  const totalEfectivo = cortesSeleccionadosReparto.reduce(
+    (suma, corte) =>
+      suma + Number(corte.efectivo || 0),
+    0
+  );
+  
+  const totalTransferencias = cortesSeleccionadosReparto.reduce(
+    (suma, corte) =>
+      suma + Number(corte.transferencias || 0),
+    0
+  );
+  
+  const granTotal = totalEfectivo + totalTransferencias;
+  
+  const totalSalidas = gastosReparto.reduce(
+    (suma, gasto) =>
+      suma + Number(gasto.monto || 0),
+    0
+  );
+  
+  const efectivoRestante = totalEfectivo - totalSalidas;
+  const restante = efectivoRestante + totalTransferencias;
+  
+  repartoEfectivo.textContent = money(totalEfectivo);
+  repartoTransferencias.textContent = money(totalTransferencias);
+  repartoGranTotal.textContent = money(granTotal);
+  repartoTotalSalidas.textContent = money(totalSalidas);
+  repartoEfectivoRestante.textContent = money(efectivoRestante);
+  repartoRestante.textContent = money(restante);
+
+  guardarRepartoBtn.disabled =
+  cortesSeleccionadosReparto.length === 0 ||
+  gastosReparto.length === 0;
+}
+
+function renderGastosReparto() {
+  if (gastosReparto.length === 0) {
+    repartoGastosBody.innerHTML = `
+      <tr>
+        <td colspan="3" class="muted">
+          Aún no agregas gastos.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  repartoGastosBody.innerHTML = gastosReparto
+    .map(
+      (gasto, index) => `
+        <tr>
+          <td>${gasto.concepto}</td>
+          <td>${money(gasto.monto)}</td>
+          <td>
+            <button
+              type="button"
+              class="iconBtn quitarGastoRepartoBtn"
+              data-index="${index}"
+            >
+              Quitar
+            </button>
+          </td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+if (agregarGastoRepartoBtn) {
+  agregarGastoRepartoBtn.addEventListener("click", () => {
+    const concepto = repartoConcepto.value.trim();
+    const monto = Number(repartoMonto.value || 0);
+
+    if (!concepto) {
+      repartoStatus.textContent =
+        "❌ Escribe el concepto del gasto.";
+      return;
+    }
+
+    if (monto <= 0) {
+      repartoStatus.textContent =
+        "❌ El monto debe ser mayor a $0.";
+      return;
+    }
+
+    const efectivoDisponible = cortesSeleccionadosReparto.reduce(
+      (suma, corte) =>
+        suma + Number(corte.efectivo || 0),
+      0
+    );
+    
+    const totalActual = gastosReparto.reduce(
+      (suma, gasto) =>
+        suma + Number(gasto.monto || 0),
+      0
+    );
+    
+    if (totalActual + monto > efectivoDisponible) {
+      repartoStatus.textContent =
+        "❌ El gasto supera el efectivo disponible.";
+      return;
+    }
+
+    gastosReparto.push({
+      concepto,
+      monto
+    });
+
+    repartoConcepto.value = "";
+    repartoMonto.value = 0;
+    repartoStatus.textContent = "";
+
+    renderGastosReparto();
+    actualizarTotalesReparto();
+  });
+}
+
+if (repartoGastosBody) {
+  repartoGastosBody.addEventListener("click", (e) => {
+    const btn = e.target.closest(".quitarGastoRepartoBtn");
+    if (!btn) return;
+
+    const index = Number(btn.dataset.index);
+
+    gastosReparto.splice(index, 1);
+
+    renderGastosReparto();
+    actualizarTotalesReparto();
+  });
+}
+
+if (guardarRepartoBtn) {
+  guardarRepartoBtn.addEventListener("click", async () => {
+    ensureSupabase();
+
+    if (cortesSeleccionadosReparto.length === 0) {
+      repartoStatus.textContent =
+        "❌ Selecciona al menos un corte.";
+      return;
+    }
+
+    if (gastosReparto.length === 0) {
+      repartoStatus.textContent =
+        "❌ Agrega al menos un gasto o salida.";
+      return;
+    }
+
+    const totalEfectivo = cortesSeleccionadosReparto.reduce(
+      (suma, corte) =>
+        suma + Number(corte.efectivo || 0),
+      0
+    );
+    
+    const totalTransferencias = cortesSeleccionadosReparto.reduce(
+      (suma, corte) =>
+        suma + Number(corte.transferencias || 0),
+      0
+    );
+    
+    const granTotal = totalEfectivo + totalTransferencias;
+    
+    const totalSalidas = gastosReparto.reduce(
+      (suma, gasto) =>
+        suma + Number(gasto.monto || 0),
+      0
+    );
+    
+    const efectivoRestante = totalEfectivo - totalSalidas;
+    const restante = efectivoRestante + totalTransferencias;
+    
+    if (efectivoRestante < 0) {
+      repartoStatus.textContent =
+        "❌ Las salidas superan el efectivo disponible.";
+      return;
+    }
+
+    guardarRepartoBtn.disabled = true;
+    repartoStatus.textContent = "Guardando reparto...";
+
+    let repartoId = null;
+
+    try {
+      // 1. Crear reparto principal
+      const { data: repartoCreado, error: repartoError } =
+        await supabaseClient
+          .from("repartos_cortes")
+          .insert({
+            efectivo_cortes: totalEfectivo,
+            transferencias_cortes: totalTransferencias,
+            total_cortes: granTotal,
+            total_salidas: totalSalidas,
+            efectivo_restante: efectivoRestante,
+            restante: restante
+          })
+          .select("id")
+          .single();
+    
+      if (repartoError) throw repartoError;
+    
+      repartoId = repartoCreado.id;
+
+      // 2. Relacionar los cortes seleccionados
+      const cortesDetalle = cortesSeleccionadosReparto.map(
+        (corte) => ({
+          reparto_id: repartoId,
+          corte_id: corte.id
+        })
+      );
+
+      const { error: cortesDetalleError } =
+        await supabaseClient
+          .from("reparto_cortes_detalle")
+          .insert(cortesDetalle);
+
+      if (cortesDetalleError) throw cortesDetalleError;
+
+      // 3. Guardar los gastos
+      const gastosDetalle = gastosReparto.map(
+        (gasto) => ({
+          reparto_id: repartoId,
+          concepto: gasto.concepto,
+          monto: gasto.monto
+        })
+      );
+
+      const { error: gastosError } =
+        await supabaseClient
+          .from("reparto_gastos")
+          .insert(gastosDetalle);
+
+      if (gastosError) throw gastosError;
+
+      repartoStatus.textContent =
+        `✅ Reparto guardado correctamente. ID: ${repartoId}`;
+
+      // 4. Limpiar pantalla
+      gastosReparto = [];
+      cortesSeleccionadosReparto = [];
+
+      repartoConcepto.value = "";
+      repartoMonto.value = 0;
+
+      renderGastosReparto();
+
+      repartoGranTotal.textContent = money(0);
+      repartoTotalSalidas.textContent = money(0);
+      repartoRestante.textContent = money(0);
+
+      // 5. Recargar cortes disponibles
+      await cargarCortesDisponiblesReparto();
+
+      // 6. Actualizar historial automáticamente
+      await cargarHistorialRepartos();
+
+    } catch (err) {
+      console.error("Error al guardar reparto:", err);
+
+      // Si algo falló después de crear el reparto,
+      // eliminamos el reparto incompleto.
+      if (repartoId) {
+        await supabaseClient
+          .from("repartos_cortes")
+          .delete()
+          .eq("id", repartoId);
+      }
+
+      repartoStatus.textContent =
+        `❌ Error al guardar reparto: ${err.message || "Error desconocido"}`;
+
+      guardarRepartoBtn.disabled = false;
+    }
+  });
+}
+
+async function cargarHistorialRepartos() {
+  ensureSupabase();
+
+  historialRepartosStatus.textContent = "Cargando historial...";
+  historialRepartosBody.innerHTML = "";
+
+  const { data, error } = await supabaseClient
+    .from("repartos_cortes")
+    .select(`
+      id,
+      created_at,
+      efectivo_cortes,
+      transferencias_cortes,
+      total_cortes,
+      total_salidas,
+      efectivo_restante,
+      restante
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    historialRepartosStatus.textContent =
+      `❌ Error al cargar historial: ${error.message}`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    historialRepartosBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="muted">
+          No hay repartos guardados.
+        </td>
+      </tr>
+    `;
+
+    historialRepartosStatus.textContent =
+      "No hay repartos guardados.";
+    return;
+  }
+
+  historialRepartosBody.innerHTML = data
+  .map(
+    (row) => `
+      <tr>
+        <td>${row.id}</td>
+        <td>${formatDateTime(row.created_at)}</td>
+        <td>${money(Number(row.efectivo_cortes || 0))}</td>
+        <td>${money(Number(row.transferencias_cortes || 0))}</td>
+        <td>${money(Number(row.total_cortes || 0))}</td>
+        <td>${money(Number(row.total_salidas || 0))}</td>
+        <td>${money(Number(row.efectivo_restante || 0))}</td>
+        <td>${money(Number(row.restante || 0))}</td>
+        <td>
+          <button
+            type="button"
+            class="ghost abrirDetalleRepartoBtn"
+            data-reparto-id="${row.id}"
+            style="width:auto;"
+          >
+            Abrir
+          </button>
+        </td>
+      </tr>
+    `
+  )
+  .join("");
+
+  historialRepartosStatus.textContent =
+    `${data.length} reparto(s) encontrado(s).`;
+}
+
+if (cargarHistorialRepartosBtn) {
+  cargarHistorialRepartosBtn.addEventListener("click", () => {
+    cargarHistorialRepartos();
+  });
+}
+
+async function abrirDetalleReparto(repartoId) {
+  ensureSupabase();
+
+  detalleRepartoPanel.style.display = "";
+  detalleRepartoCortesBody.innerHTML = "";
+  detalleRepartoGastosBody.innerHTML = "";
+
+  // 1. Cargar datos generales del reparto
+  const { data: reparto, error: repartoError } =
+    await supabaseClient
+      .from("repartos_cortes")
+      .select(`
+        id,
+        created_at,
+        efectivo_cortes,
+        transferencias_cortes,
+        total_cortes,
+        total_salidas,
+        efectivo_restante,
+        restante
+      `)
+      .eq("id", repartoId)
+      .single();
+
+  if (repartoError) {
+    console.error(repartoError);
+    detalleRepartoPanel.style.display = "none";
+    historialRepartosStatus.textContent =
+      `❌ Error al abrir reparto: ${repartoError.message}`;
+    return;
+  }
+
+  detalleRepartoId.textContent = reparto.id;
+  detalleRepartoFecha.textContent =
+    formatDateTime(reparto.created_at);
+
+    detalleRepartoEfectivo.textContent =
+    money(Number(reparto.efectivo_cortes || 0));
+  
+  detalleRepartoTransferencias.textContent =
+    money(Number(reparto.transferencias_cortes || 0));
+  
+  detalleRepartoTotalCortes.textContent =
+    money(Number(reparto.total_cortes || 0));
+  
+  detalleRepartoTotalSalidas.textContent =
+    money(Number(reparto.total_salidas || 0));
+  
+  detalleRepartoEfectivoRestante.textContent =
+    money(Number(reparto.efectivo_restante || 0));
+  
+  detalleRepartoRestante.textContent =
+    money(Number(reparto.restante || 0));
+
+  // 2. Saber qué cortes pertenecen a este reparto
+  const { data: detallesCortes, error: detallesError } =
+    await supabaseClient
+      .from("reparto_cortes_detalle")
+      .select("corte_id")
+      .eq("reparto_id", repartoId);
+
+  if (detallesError) {
+    console.error(detallesError);
+    historialRepartosStatus.textContent =
+      `❌ Error al cargar cortes: ${detallesError.message}`;
+    return;
+  }
+
+  const corteIds = (detallesCortes || []).map(
+    (row) => row.corte_id
+  );
+
+  if (corteIds.length > 0) {
+    const { data: cortes, error: cortesError } =
+      await supabaseClient
+        .from("cortes_turno")
+        .select(`
+          id,
+          employee,
+          inicio,
+          fin,
+          total_cobrado
+        `)
+        .in("id", corteIds);
+
+    if (cortesError) {
+      console.error(cortesError);
+      historialRepartosStatus.textContent =
+        `❌ Error al cargar detalle de cortes: ${cortesError.message}`;
+      return;
+    }
+
+    detalleRepartoCortesBody.innerHTML = (cortes || [])
+      .map(
+        (corte) => `
+          <tr>
+            <td>${corte.employee || "-"}</td>
+            <td>${formatDateTime(corte.inicio)}</td>
+            <td>${formatDateTime(corte.fin)}</td>
+            <td>${money(Number(corte.total_cobrado || 0))}</td>
+          </tr>
+        `
+      )
+      .join("");
+  }
+
+  // 3. Cargar gastos del reparto
+  const { data: gastos, error: gastosError } =
+    await supabaseClient
+      .from("reparto_gastos")
+      .select(`
+        concepto,
+        monto
+      `)
+      .eq("reparto_id", repartoId)
+      .order("id", { ascending: true });
+
+  if (gastosError) {
+    console.error(gastosError);
+    historialRepartosStatus.textContent =
+      `❌ Error al cargar gastos: ${gastosError.message}`;
+    return;
+  }
+
+  detalleRepartoGastosBody.innerHTML = (gastos || [])
+    .map(
+      (gasto) => `
+        <tr>
+          <td>${gasto.concepto}</td>
+          <td>${money(Number(gasto.monto || 0))}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  historialRepartosStatus.textContent = "";
+}
+
+if (historialRepartosBody) {
+  historialRepartosBody.addEventListener("click", (e) => {
+    const btn = e.target.closest(".abrirDetalleRepartoBtn");
+    if (!btn) return;
+
+    const repartoId = btn.dataset.repartoId;
+
+    abrirDetalleReparto(repartoId);
+  });
+}
+
+if (cerrarDetalleRepartoBtn) {
+  cerrarDetalleRepartoBtn.addEventListener("click", () => {
+    detalleRepartoPanel.style.display = "none";
+  });
+}
+
+renderGastosReparto();
+
+if (repartoCortesBody) {
+  repartoCortesBody.addEventListener("change", (e) => {
+    if (!e.target.classList.contains("repartoCorteCheck")) return;
+
+    actualizarTotalesReparto();
+  });
 }
 
 historialPaginaInfo.textContent =
