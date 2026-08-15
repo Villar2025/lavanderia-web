@@ -1026,7 +1026,9 @@ async function generarCorteTurno() {
   .from("movimientos_caja")
   .select("metodo_pago, monto, origen, created_at")
   .eq("employee", employee)
-  .limit(100);
+  .gte("created_at", inicioLocal.toISOString())
+  .lte("created_at", finLocal.toISOString())
+  .order("created_at", { ascending: true });
 
   if (error) {
     console.error("Error al generar corte:", error);
@@ -4716,3 +4718,4 @@ if (articulosError) {
 
   win.document.close();
 }
+
