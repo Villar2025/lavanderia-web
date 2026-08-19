@@ -874,6 +874,7 @@ const corteHoraInicio = $("#corteHoraInicio");
 const corteHoraFin = $("#corteHoraFin");
 const generarCorteBtn = $("#generarCorteBtn");
 const guardarCorteBtn = $("#guardarCorteBtn");
+const imprimirCorteBtn = $("#imprimirCorteBtn");
 const corteStatus = $("#corteStatus");
 
 const historialCorteDesde = $("#historialCorteDesde");
@@ -893,6 +894,7 @@ let historialHayMas = false;
 
 const detalleCortePanel = $("#detalleCortePanel");
 const cerrarDetalleCorteBtn = $("#cerrarDetalleCorteBtn");
+const imprimirDetalleCorteBtn = $("#imprimirDetalleCorteBtn");
 
 const detalleCorteId = $("#detalleCorteId");
 const detalleCorteEmpleado = $("#detalleCorteEmpleado");
@@ -907,6 +909,137 @@ const detalleFichasEncargos = $("#detalleFichasEncargos");
 const detalleFichasTotal = $("#detalleFichasTotal");
 
 let ultimoCorteGenerado = null;
+let ultimoCorteImprimible = null;
+let corteDetalleImprimible = null;
+
+function mapaFichasATexto(mapa = {}) {
+  const entradas = Object.entries(mapa);
+
+  if (entradas.length === 0) {
+    return "Sin fichas";
+  }
+
+  return entradas
+    .map(([concepto, cantidad]) => `${concepto}: ${cantidad}`)
+    .join("\n");
+}
+
+function imprimirTicketCorte(corte) {
+  if (!corte) return;
+
+  const ventana = window.open("", "_blank", "width=320,height=700");
+
+  if (!ventana) {
+    alert("No se pudo abrir la ventana de impresión.");
+    return;
+  }
+
+  const inicio = new Date(corte.inicio).toLocaleString("es-MX");
+  const fin = new Date(corte.fin).toLocaleString("es-MX");
+
+  const contenido = `
+    <!doctype html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Corte de turno</title>
+      <style>
+        @page {
+          size: 58mm auto;
+          margin: 2mm;
+        }
+
+        body {
+          width: 54mm;
+          margin: 0;
+          padding: 0;
+          font-family: monospace;
+          font-size: 11px;
+          line-height: 1.3;
+          text-align: left;
+        }
+
+        .center {
+          text-align: center;
+        }
+
+        .line {
+          border-top: 1px dashed #000;
+          margin: 6px 0;
+        }
+
+        .titulo {
+          font-weight: bold;
+          font-size: 13px;
+        }
+
+        .dato {
+          margin: 2px 0;
+          text-align: left;
+        }
+
+        pre {
+          font-family: monospace;
+          white-space: pre-wrap;
+          margin: 3px 0;
+          text-align: left;
+        }
+      </style>
+    </head>
+
+    <body>
+      <div class="center titulo">SPEED WASH</div>
+      <div class="center">CORTE DE TURNO</div>
+
+      <div class="line"></div>
+
+      <div class="dato">Folio: ${corte.id ?? "-"}</div>
+      <div class="dato">Empleado: ${corte.employee ?? "-"}</div>
+      <div class="dato">Inicio: ${inicio}</div>
+      <div class="dato">Fin: ${fin}</div>
+
+      <div class="line"></div>
+
+      <div class="dato">Efectivo: ${money(corte.efectivo || 0)}</div>
+      <div class="dato">Transferencias: ${money(corte.transferencias || 0)}</div>
+      <div class="dato"><strong>Total: ${money(corte.total_cobrado || 0)}</strong></div>
+
+      <div class="line"></div>
+
+      <div><strong>FICHAS AUTO SERVICIO</strong></div>
+      <pre>${mapaFichasATexto(corte.fichas_auto)}</pre>
+
+      <div class="line"></div>
+
+      <div><strong>FICHAS ENCARGOS</strong></div>
+      <pre>${mapaFichasATexto(corte.fichas_encargos)}</pre>
+
+      <div class="line"></div>
+
+      <div><strong>TOTAL GENERAL FICHAS</strong></div>
+      <pre>${mapaFichasATexto(corte.fichas_total)}</pre>
+
+      <div class="line"></div>
+
+      <div class="center">Corte cerrado</div>
+
+      <script>
+        window.onload = () => {
+          window.print();
+        };
+      <\/script>
+    </body>
+    </html>
+  `;
+
+  ventana.document.open();
+  ventana.document.write(contenido);
+  ventana.document.close();
+}
+
+imprimirCorteBtn.addEventListener("click", () => {
+  imprimirTicketCorte(ultimoCorteImprimible);
+});
 
 const consultaAutoServicio = $("#consultaAutoServicio");
 const consultaEncargos = $("#consultaEncargos");
@@ -1086,13 +1219,32 @@ for (const ficha of fichasData || []) {
       Number(fichasAuto[concepto] || 0) + cantidad;
   }
 
-  if (ficha.origen === "encargo") {
+  const conceptosOcultosEncargo = [
+    "1 medida de jabón",
+    "1 medida de suavizante",
+    "1 medida de desmugrante",
+    "Bolsa chica",
+    "Bolsa mediana",
+    "Bolsa grande"
+  ];
+  
+  if (
+    ficha.origen === "encargo" &&
+    !conceptosOcultosEncargo.includes(concepto)
+  ) {
     fichasEncargos[concepto] =
       Number(fichasEncargos[concepto] || 0) + cantidad;
   }
 
+  const excluirDelTotal =
+  ficha.origen === "encargo" &&
+  conceptosOcultosEncargo.includes(concepto);
+
+if (!excluirDelTotal) {
   fichasTotal[concepto] =
     Number(fichasTotal[concepto] || 0) + cantidad;
+}
+
 }
 
 ultimoCorteGenerado = {
@@ -1198,15 +1350,25 @@ guardarCorteBtn.addEventListener("click", async () => {
   }
 
   corteStatus.innerHTML += `
-    <div style="margin-top:12px;">
-      ✅ Corte guardado correctamente.
-      <br>
-      <strong>Folio de corte:</strong> ${data.id}
-    </div>
-  `;
+  <div style="margin-top:12px;">
+    ✅ Corte guardado correctamente.
+    <br>
+    <strong>Folio de corte:</strong> ${data.id}
+  </div>
+`;
 
-  ultimoCorteGenerado = null;
-  guardarCorteBtn.disabled = true;
+// Guardar una copia del corte ya cerrado para poder imprimirlo
+ultimoCorteImprimible = {
+  ...ultimoCorteGenerado,
+  id: data.id
+};
+
+// Activar botón de impresión
+imprimirCorteBtn.disabled = false;
+
+// Limpiar el corte generado
+ultimoCorteGenerado = null;
+guardarCorteBtn.disabled = true;
 });
 
 async function cargarHistorialCortes() {
@@ -2012,6 +2174,8 @@ async function verDetalleCorte(corteId) {
     return;
   }
 
+  corteDetalleImprimible = data;
+
   detalleCorteId.textContent = data.id;
   detalleCorteEmpleado.textContent = data.employee || "-";
   detalleCorteInicio.textContent = formatDateTime(data.inicio);
@@ -2026,6 +2190,10 @@ async function verDetalleCorte(corteId) {
   renderDetalleFichas(detalleFichasEncargos, data.fichas_encargos);
   renderDetalleFichas(detalleFichasTotal, data.fichas_total);
 }
+
+imprimirDetalleCorteBtn.addEventListener("click", () => {
+  imprimirTicketCorte(corteDetalleImprimible);
+});
 
 historialCortesBody.addEventListener("click", (e) => {
   const btn = e.target.closest("button");
@@ -2796,6 +2964,19 @@ updateEncargoSummary();
 // =====================
 // Lista y control de encargos
 // =====================
+const btnEncargoRegistro = $("#btnEncargoRegistro");
+const btnEncargoPagoEntrega = $("#btnEncargoPagoEntrega");
+const btnEncargoFichas = $("#btnEncargoFichas");
+
+const encargoVistaRegistro = $("#encargoVistaRegistro");
+const encargoVistaGestion = $("#encargoVistaGestion");
+
+const encargoBloqueFichas = $("#encargoBloqueFichas");
+const encargoBloquePago = $("#encargoBloquePago");
+
+const guardarPagoEntregaBtn = $("#guardarPagoEntregaBtn");
+const guardarFichasEncargoBtn = $("#guardarFichasEncargoBtn");
+
 const encargoFromDate = $("#encargoFromDate");
 const encargoToDate = $("#encargoToDate");
 const encargoEmployeeFilter = $("#encargoEmployeeFilter");
@@ -3139,6 +3320,310 @@ if (detailDelivered) {
   detailDelivered.addEventListener("change", syncSaveEncargoButtonLabel);
 }
 
+async function guardarFichasEncargo() {
+  ensureSupabase();
+
+  if (!currentEncargoId) {
+    encargoDetailStatus.textContent = "No hay encargo seleccionado.";
+    return;
+  }
+
+  if (!detailUsoEmployee.value) {
+    encargoDetailStatus.textContent =
+      "Selecciona el empleado que está registrando el uso.";
+    return;
+  }
+
+  const updatePayload = {
+    used_lavadora_16: Number(useLav16.value || 0),
+    used_lavadora_9: Number(useLav9.value || 0),
+    used_lavadora_4: Number(useLav4.value || 0),
+
+    used_secadora_15: Number(useSec15.value || 0),
+    used_secadora_30: Number(useSec30.value || 0),
+
+    used_jabon: Number(useJabon.value || 0),
+    used_suavizante: Number(useSuavizante.value || 0),
+    used_desmugrante: Number(useDesmugrante.value || 0),
+
+    used_bolsa_chica: Number(useBolsaChica.value || 0),
+    used_bolsa_mediana: Number(useBolsaMediana.value || 0),
+    used_bolsa_grande: Number(useBolsaGrande.value || 0),
+  };
+
+  encargoDetailStatus.textContent = "Guardando fichas...";
+  guardarFichasEncargoBtn.disabled = true;
+
+  const { error } = await supabaseClient
+    .from("encargos")
+    .update(updatePayload)
+    .eq("id", currentEncargoId);
+
+  if (error) {
+    console.error(error);
+    encargoDetailStatus.textContent =
+      `❌ Error al guardar fichas: ${error.message}`;
+    guardarFichasEncargoBtn.disabled = false;
+    return;
+  }
+
+  const fichasEncargoRows = [];
+
+  function agregarFichaEncargo(concepto, cantidad) {
+    const qty = Number(cantidad || 0);
+
+    if (qty > 0) {
+      fichasEncargoRows.push({
+        employee: detailUsoEmployee.value,
+        origen: "encargo",
+        concepto,
+        cantidad: qty,
+        referencia_id: String(currentEncargoId),
+      });
+    }
+  }
+
+  agregarFichaEncargo(
+    "Lavadora 16 kg",
+    Number(useLav16.value || 0) - usoAnteriorEncargo.lav16
+  );
+
+  agregarFichaEncargo(
+    "Lavadora 9 kg",
+    Number(useLav9.value || 0) - usoAnteriorEncargo.lav9
+  );
+
+  agregarFichaEncargo(
+    "Lavadora 4 kg",
+    Number(useLav4.value || 0) - usoAnteriorEncargo.lav4
+  );
+
+  agregarFichaEncargo(
+    "Secadora 9 kg (15 min)",
+    Number(useSec15.value || 0) - usoAnteriorEncargo.sec15
+  );
+
+  agregarFichaEncargo(
+    "Secadora 9 kg (30 min)",
+    (
+      Number(useSec30.value || 0) -
+      usoAnteriorEncargo.sec30
+    ) * 2
+  );
+
+  agregarFichaEncargo(
+    "1 medida de jabón",
+    Number(useJabon.value || 0) - usoAnteriorEncargo.jabon
+  );
+
+  agregarFichaEncargo(
+    "1 medida de suavizante",
+    Number(useSuavizante.value || 0) - usoAnteriorEncargo.suavizante
+  );
+
+  agregarFichaEncargo(
+    "1 medida de desmugrante",
+    Number(useDesmugrante.value || 0) - usoAnteriorEncargo.desmugrante
+  );
+
+  agregarFichaEncargo(
+    "Bolsa chica",
+    Number(useBolsaChica.value || 0) - usoAnteriorEncargo.bolsaChica
+  );
+
+  agregarFichaEncargo(
+    "Bolsa mediana",
+    Number(useBolsaMediana.value || 0) - usoAnteriorEncargo.bolsaMediana
+  );
+
+  agregarFichaEncargo(
+    "Bolsa grande",
+    Number(useBolsaGrande.value || 0) - usoAnteriorEncargo.bolsaGrande
+  );
+
+  if (fichasEncargoRows.length > 0) {
+    const { error: fichasError } = await supabaseClient
+      .from("movimientos_fichas")
+      .insert(fichasEncargoRows);
+
+    if (fichasError) {
+      console.error(fichasError);
+      encargoDetailStatus.textContent =
+        "⚠️ El uso se guardó, pero no se pudieron registrar las fichas del corte.";
+
+      guardarFichasEncargoBtn.disabled = false;
+      return;
+    }
+  }
+
+  usoAnteriorEncargo = {
+    lav16: Number(useLav16.value || 0),
+    lav9: Number(useLav9.value || 0),
+    lav4: Number(useLav4.value || 0),
+
+    sec15: Number(useSec15.value || 0),
+    sec30: Number(useSec30.value || 0),
+
+    jabon: Number(useJabon.value || 0),
+    suavizante: Number(useSuavizante.value || 0),
+    desmugrante: Number(useDesmugrante.value || 0),
+
+    bolsaChica: Number(useBolsaChica.value || 0),
+    bolsaMediana: Number(useBolsaMediana.value || 0),
+    bolsaGrande: Number(useBolsaGrande.value || 0),
+  };
+
+  encargoDetailStatus.textContent =
+    "✅ Fichas guardadas correctamente.";
+
+  guardarFichasEncargoBtn.disabled = false;
+
+  await openEncargoDetail(currentEncargoId);
+}
+
+async function guardarPagoEntregaEncargo() {
+  ensureSupabase();
+
+  if (!currentEncargoId) {
+    encargoDetailStatus.textContent = "No hay encargo seleccionado.";
+    return;
+  }
+
+  if (!detailUsoEmployee.value) {
+    encargoDetailStatus.textContent =
+      "Selecciona el empleado responsable.";
+    return;
+  }
+
+  const paymentStatus = detailPaymentStatus.value;
+  const abonoHoy = Number(detailAbonoHoy?.value || 0);
+  const abonoMetodo = detailAbonoMetodo?.value || "efectivo";
+
+  const pagadoAnterior = Number(currentEncargoPaid || 0);
+  const total = Number(currentEncargoTotal || 0);
+
+  const amountPaid = wholeMoney(
+    pagadoAnterior + abonoHoy
+  );
+
+  const deliveredStatus =
+    detailDelivered.value === "entregado"
+      ? "entregado"
+      : "pendiente";
+
+  if (abonoHoy < 0) {
+    encargoDetailStatus.textContent =
+      "El abono no puede ser negativo.";
+    return;
+  }
+
+  if (
+    (paymentStatus === "pagado" ||
+      paymentStatus === "transferencia") &&
+    amountPaid < total
+  ) {
+    encargoDetailStatus.textContent =
+      "Si marcas como pagado, el monto debe cubrir el total.";
+    return;
+  }
+
+  const updatePayload = {
+    payment_status: paymentStatus,
+    amount_paid: amountPaid,
+
+    change:
+      paymentStatus === "pagado"
+        ? wholeMoney(Math.max(amountPaid - total, 0))
+        : 0,
+
+    amount_due:
+      paymentStatus === "pendiente"
+        ? wholeMoney(Math.max(total - amountPaid, 0))
+        : 0,
+
+    delivered_status: deliveredStatus,
+
+    delivered_at:
+      deliveredStatus === "entregado"
+        ? new Date().toISOString()
+        : null,
+  };
+
+  encargoDetailStatus.textContent =
+    "Guardando pago y entrega...";
+
+  guardarPagoEntregaBtn.disabled = true;
+
+  const { error } = await supabaseClient
+    .from("encargos")
+    .update(updatePayload)
+    .eq("id", currentEncargoId);
+
+  if (error) {
+    console.error(error);
+
+    encargoDetailStatus.textContent =
+      `❌ Error al guardar: ${error.message}`;
+
+    guardarPagoEntregaBtn.disabled = false;
+    return;
+  }
+
+  // Registrar solamente el dinero realmente pendiente
+  if (abonoHoy > 0) {
+    const pendienteAntes = Math.max(
+      total - pagadoAnterior,
+      0
+    );
+
+    const montoAbonoReal = Math.min(
+      abonoHoy,
+      pendienteAntes
+    );
+
+    if (montoAbonoReal > 0) {
+      const employeeAbono = detailUsoEmployee.value;
+
+      const { error: movimientoAbonoError } =
+        await supabaseClient
+          .from("movimientos_caja")
+          .insert({
+            employee: employeeAbono,
+            origen: "abono_encargo",
+            metodo_pago: abonoMetodo,
+            monto: montoAbonoReal,
+            referencia_id: String(currentEncargoId),
+          });
+
+      if (movimientoAbonoError) {
+        console.error(
+          "Error al registrar abono en caja:",
+          movimientoAbonoError
+        );
+
+        encargoDetailStatus.textContent =
+          "⚠️ El pago se guardó, pero no se pudo registrar el abono en el corte de caja.";
+
+        guardarPagoEntregaBtn.disabled = false;
+        return;
+      }
+    }
+  }
+
+  encargoDetailStatus.textContent =
+    deliveredStatus === "entregado"
+      ? "✅ Pago guardado y encargo marcado como entregado."
+      : "✅ Pago guardado correctamente.";
+
+  guardarPagoEntregaBtn.disabled = false;
+
+  await openEncargoDetail(currentEncargoId);
+
+  if (encargoDetailPanel.style.display !== "none") {
+    await loadEncargosList();
+  }
+}
+
 async function saveEncargoUsageAndDelivery() {
   ensureSupabase();
 
@@ -3150,6 +3635,12 @@ async function saveEncargoUsageAndDelivery() {
 
   if (!currentEncargoId) {
     encargoDetailStatus.textContent = "No hay encargo seleccionado.";
+    return;
+  }
+
+  if (!detailUsoEmployee.value) {
+    encargoDetailStatus.textContent =
+      "Selecciona el empleado responsable.";
     return;
   }
 
@@ -3378,6 +3869,73 @@ usoAnteriorEncargo = {
   }
 }
 
+function mostrarVistaEncargos(tipo) {
+  if (!encargoVistaRegistro || !encargoVistaGestion) return;
+
+  // Vista principal
+  encargoVistaRegistro.style.display =
+    tipo === "registro" ? "" : "none";
+
+  encargoVistaGestion.style.display =
+    tipo === "registro" ? "none" : "";
+
+  // Dentro del detalle del encargo
+  if (encargoBloquePago) {
+    encargoBloquePago.style.display =
+      tipo === "pago" ? "" : "none";
+  }
+
+  if (encargoBloqueFichas) {
+    encargoBloqueFichas.style.display =
+      tipo === "fichas" ? "" : "none";
+  }
+
+  // Mostrar el botón correspondiente
+if (guardarPagoEntregaBtn) {
+  guardarPagoEntregaBtn.style.display =
+    tipo === "pago" ? "" : "none";
+}
+
+if (guardarFichasEncargoBtn) {
+  guardarFichasEncargoBtn.style.display =
+    tipo === "fichas" ? "" : "none";
+}
+
+  // Botones activos
+  btnEncargoRegistro?.classList.toggle(
+    "active",
+    tipo === "registro"
+  );
+
+  btnEncargoPagoEntrega?.classList.toggle(
+    "active",
+    tipo === "pago"
+  );
+
+  btnEncargoFichas?.classList.toggle(
+    "active",
+    tipo === "fichas"
+  );
+}
+
+if (btnEncargoRegistro) {
+  btnEncargoRegistro.addEventListener("click", () => {
+    mostrarVistaEncargos("registro");
+  });
+}
+
+if (btnEncargoPagoEntrega) {
+  btnEncargoPagoEntrega.addEventListener("click", () => {
+    mostrarVistaEncargos("pago");
+  });
+}
+
+if (btnEncargoFichas) {
+  btnEncargoFichas.addEventListener("click", () => {
+    mostrarVistaEncargos("fichas");
+  });
+}
+
 if (loadEncargosBtn) {
   loadEncargosBtn.addEventListener("click", loadEncargosList);
 }
@@ -3432,6 +3990,20 @@ if (closeEncargoDetailBtn) {
   });
 }
 
+if (guardarPagoEntregaBtn) {
+  guardarPagoEntregaBtn.addEventListener(
+    "click",
+    guardarPagoEntregaEncargo
+  );
+}
+
+if (guardarFichasEncargoBtn) {
+  guardarFichasEncargoBtn.addEventListener(
+    "click",
+    guardarFichasEncargo
+  );
+}
+
 if (saveEncargoUsageBtn) {
   saveEncargoUsageBtn.addEventListener("click", saveEncargoUsageAndDelivery);
 }
@@ -3475,7 +4047,9 @@ const viewEncargosSummaryDue = $("#viewEncargosSummaryDue");
 const loadUsageSummaryBtn = $("#loadUsageSummaryBtn");
 const clearUsageFiltersBtn = $("#clearUsageFiltersBtn");
 const usageFromDate = $("#usageFromDate");
+const usageStartTime = $("#usageStartTime");
 const usageToDate = $("#usageToDate");
+const usageEndTime = $("#usageEndTime");
 const usageEmployeeFilter = $("#usageEmployeeFilter");
 const usageSalesBody = $("#usageSalesBody");
 const usageEncargosBody = $("#usageEncargosBody");
@@ -3499,10 +4073,14 @@ const viewDetailEncargoEntregadoAt = $("#viewDetailEncargoEntregadoAt");
 const viewEncargoServicesBody = $("#viewEncargoServicesBody");
 const viewEncargoUsageBody = $("#viewEncargoUsageBody");
 
-(function setDefaultViewEncargoFilters() {
-  if (viewEncargoFromDate) viewEncargoFromDate.value = "";
-  if (viewEncargoToDate) viewEncargoToDate.value = "";
-  if (viewEncargoEmployeeFilter) viewEncargoEmployeeFilter.value = "";
+(function setDefaultUsageFilters() {
+  if (usageFromDate) usageFromDate.value = "";
+  if (usageStartTime) usageStartTime.value = "";
+
+  if (usageToDate) usageToDate.value = "";
+  if (usageEndTime) usageEndTime.value = "";
+
+  if (usageEmployeeFilter) usageEmployeeFilter.value = "";
 })();
 
 (function setDefaultUsageFilters() {
@@ -3635,19 +4213,6 @@ async function loadViewEncargos() {
   .select("employee, origen, monto, metodo_pago, referencia_id, created_at")
   .in("origen", ["encargo", "abono_encargo"]);
 
-if (viewEncargoFromDate && viewEncargoFromDate.value) {
-  movimientosCajaQuery = movimientosCajaQuery.gte(
-    "created_at",
-    localDateStartISO(viewEncargoFromDate.value)
-  );
-}
-
-if (viewEncargoToDate && viewEncargoToDate.value) {
-  movimientosCajaQuery = movimientosCajaQuery.lte(
-    "created_at",
-    localDateEndISO(viewEncargoToDate.value)
-  );
-}
 
 if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
   movimientosCajaQuery = movimientosCajaQuery.eq(
@@ -3670,13 +4235,22 @@ if (movimientosCajaError) {
   return;
 }
 
-const totalCobradoEmpleado = (movimientosCajaData || []).reduce(
+const idsEncargosVisibles = new Set(
+  (data || []).map((row) => String(row.id))
+);
+
+const movimientosEncargosVisibles = (movimientosCajaData || []).filter(
+  (movimiento) =>
+    idsEncargosVisibles.has(String(movimiento.referencia_id || ""))
+);
+
+const totalCobradoEmpleado = movimientosEncargosVisibles.reduce(
   (suma, movimiento) =>
     suma + Number(movimiento.monto || 0),
   0
 );
 
-const totalEfectivoEncargos = (movimientosCajaData || []).reduce(
+const totalEfectivoEncargos = movimientosEncargosVisibles.reduce(
   (suma, movimiento) =>
     movimiento.metodo_pago === "efectivo"
       ? suma + Number(movimiento.monto || 0)
@@ -3684,7 +4258,7 @@ const totalEfectivoEncargos = (movimientosCajaData || []).reduce(
   0
 );
 
-const totalTransferenciaEncargos = (movimientosCajaData || []).reduce(
+const totalTransferenciaEncargos = movimientosEncargosVisibles.reduce(
   (suma, movimiento) =>
     movimiento.metodo_pago === "transferencia"
       ? suma + Number(movimiento.monto || 0)
@@ -3726,7 +4300,24 @@ const dataFiltrada = empleadoSeleccionado
 
   for (const row of dataFiltrada) {
     const total = Number(row.total || 0);
-    const pagadoAcumulado = Number(row.amount_paid || 0);
+  
+    const pagadoEnMovimientos = (movimientosCajaData || [])
+      .filter(
+        (movimiento) =>
+          String(movimiento.referencia_id || "") === String(row.id)
+      )
+      .reduce(
+        (suma, movimiento) =>
+          suma + Number(movimiento.monto || 0),
+        0
+      );
+  
+    const pagadoGuardado = Number(row.amount_paid || 0);
+  
+    const pagadoAcumulado = Math.max(
+      pagadoGuardado,
+      pagadoEnMovimientos
+    );
   
     const porCobrar = Math.max(total - pagadoAcumulado, 0);
     const cambio = Math.max(pagadoAcumulado - total, 0);
@@ -3764,7 +4355,25 @@ viewEncargosSummary.style.display = "block";
 
   for (const row of dataFiltrada) {
     const total = Number(row.total || 0);
-    const pagado = Number(row.amount_paid || 0);
+  
+    const pagadoEnMovimientos = (movimientosCajaData || [])
+      .filter(
+        (movimiento) =>
+          String(movimiento.referencia_id || "") === String(row.id)
+      )
+      .reduce(
+        (suma, movimiento) =>
+          suma + Number(movimiento.monto || 0),
+        0
+      );
+  
+    const pagadoGuardado = Number(row.amount_paid || 0);
+  
+    const pagado = Math.max(
+      pagadoGuardado,
+      pagadoEnMovimientos
+    );
+  
     const porCobrar = Math.max(total - pagado, 0);
     const cambio = Math.max(pagado - total, 0);
 
@@ -3915,7 +4524,20 @@ function renderUsageTable(target, usageMap) {
 
   target.innerHTML = "";
 
-  const entries = Object.entries(usageMap).filter(([, qty]) => Number(qty || 0) > 0);
+  const conceptosOcultos = [
+    "1 medida de jabón",
+    "1 medida de suavizante",
+    "1 medida de desmugrante",
+    "Bolsa chica",
+    "Bolsa mediana",
+    "Bolsa grande"
+  ];
+  
+  const entries = Object.entries(usageMap).filter(
+    ([name, qty]) =>
+      Number(qty || 0) > 0 &&
+      !conceptosOcultos.includes(name)
+  );
 
   if (!entries.length) {
     target.innerHTML = `<tr><td colspan="2" class="muted">Sin registros.</td></tr>`;
@@ -3952,9 +4574,11 @@ function normalizeUsageName(name) {
 
     "secadora 9 kg (15 min)": "Secadora 9 kg (15 min)",
     "secadora 9 kg (15 minutos)": "Secadora 9 kg (15 min)",
+    "solo secado 9 kg (15 min)": "Secadora 9 kg (15 min)",
 
     "secadora 9 kg (30 min)": "Secadora 9 kg (30 min)",
     "secadora 9 kg (30 minutos)": "Secadora 9 kg (30 min)",
+    "solo secado 9 kg (30 min)": "Secadora 9 kg (30 min)",
 
     "secado (precio libre)": "Secado (precio libre)",
     "secado": "Secado (precio libre)",
@@ -3997,132 +4621,117 @@ async function loadUsageSummary() {
   clearUsageTables();
 
   const from = usageFromDate?.value?.trim() || "";
+  const startTime =
+  document.getElementById("usageStartTime")?.value || "";
+
   const to = usageToDate?.value?.trim() || "";
+  const endTime =
+  document.getElementById("usageEndTime")?.value || "";
+
   const emp = usageEmployeeFilter?.value?.trim() || "";
+
+  const inicioISO = from
+  ? new Date(
+      `${from}T${startTime || "00:00"}:00`
+    ).toISOString()
+  : "";
+
+  const finISO = to
+  ? new Date(
+      `${to}T${endTime || "23:59"}:59`
+    ).toISOString()
+  : "";
+
+  console.log("RESUMEN FICHAS - FILTROS", {
+    from,
+    startTime,
+    to,
+    endTime,
+    emp,
+    inicioISO,
+    finISO
+  });
 
   // =========================
   // VENTAS
   // =========================
-  let ventasQuery = supabaseClient
-    .from("ventas")
-    .select("id, employee, sale_date");
-
-  if (from) ventasQuery = ventasQuery.gte("sale_date", from);
-  if (to) ventasQuery = ventasQuery.lte("sale_date", to);
-  if (emp) ventasQuery = ventasQuery.eq("employee", emp);
-
-  const { data: ventasData, error: ventasError } = await ventasQuery;
-
-  if (ventasError) {
-    console.error(ventasError);
-    usageSummaryStatus.textContent = `❌ Error al cargar ventas: ${ventasError.message}`;
-    return;
-  }
-
-  const ventaIds = (ventasData || []).map((v) => v.id);
   const salesUsage = createEmptyUsageMap();
 
-  if (ventaIds.length > 0) {
-    const { data: itemsData, error: itemsError } = await supabaseClient
-      .from("venta_items")
-      .select("venta_id, name, qty")
-      .in("venta_id", ventaIds);
-
-    if (itemsError) {
-      console.error(itemsError);
-      usageSummaryStatus.textContent = `❌ Error al cargar items de ventas: ${itemsError.message}`;
-      return;
-    }
-
-    for (const item of itemsData || []) {
-      const name = item.name;
-      const qty = Number(item.qty || 0);
-    
-      if (name === "Secadora 9 kg (15 min)" || name === "Solo secado 9 kg (15 min)") {
-        salesUsage["Secadora 9 kg (15 min)"] += qty;
-      } else if (name === "Secadora 9 kg (30 min)" || name === "Solo secado 9 kg (30 min)") {
-        salesUsage["Secadora 9 kg (30 min)"] += qty * 2;
-      } else if (salesUsage[name] !== undefined) {
-        salesUsage[name] += qty;
-      }
-    }
-  }
-
-  // =========================
-  // ENCARGOS
-  // =========================
-  let encargosQuery = supabaseClient
-    .from("encargos")
-    .select(`
-      employee,
-      created_at,
-      used_lavadora_16,
-      used_lavadora_9,
-      used_lavadora_4,
-      used_secadora_15,
-      used_secadora_30,
-      used_jabon,
-      used_suavizante,
-      used_desmugrante,
-      used_bolsa_chica,
-      used_bolsa_mediana,
-      used_bolsa_grande
-    `);
-
-  if (from) encargosQuery = encargosQuery.gte("created_at", localDateStartISO(from));
-  if (to) encargosQuery = encargosQuery.lte("created_at", localDateEndISO(to));
-  if (emp) encargosQuery = encargosQuery.eq("employee", emp);
-
-  const { data: encargosData, error: encargosError } = await encargosQuery;
-
-  let fichasEncargosQuery = supabaseClient
+let ventasQuery = supabaseClient
   .from("movimientos_fichas")
-  .select("employee, concepto, cantidad, created_at")
+  .select("employee, origen, concepto, cantidad, created_at")
+  .eq("origen", "auto_servicio");
+
+if (inicioISO) {
+  ventasQuery = ventasQuery.gte("created_at", inicioISO);
+}
+
+if (finISO) {
+  ventasQuery = ventasQuery.lte("created_at", finISO);
+}
+
+if (emp) {
+  ventasQuery = ventasQuery.eq("employee", emp);
+}
+
+const { data: ventasData, error: ventasError } = await ventasQuery;
+
+if (ventasError) {
+  console.error(ventasError);
+  usageSummaryStatus.textContent =
+    `❌ Error al cargar fichas de ventas: ${ventasError.message}`;
+  return;
+}
+
+for (const movimiento of ventasData || []) {
+  const name = normalizeUsageName(movimiento.concepto);
+  const qty = Number(movimiento.cantidad || 0);
+
+  if (salesUsage[name] !== undefined) {
+    salesUsage[name] += qty;
+  }
+}
+
+// =========================
+// ENCARGOS
+// =========================
+const encargosUsage = createEmptyUsageMap();
+
+let encargosQuery = supabaseClient
+  .from("movimientos_fichas")
+  .select("employee, origen, concepto, cantidad, created_at")
   .eq("origen", "encargo");
 
-if (usageFromDate.value) {
-  fichasEncargosQuery = fichasEncargosQuery.gte(
-    "created_at",
-    localDateStartISO(usageFromDate.value)
-  );
+if (inicioISO) {
+  encargosQuery = encargosQuery.gte("created_at", inicioISO);
 }
 
-if (usageToDate.value) {
-  fichasEncargosQuery = fichasEncargosQuery.lte(
-    "created_at",
-    localDateEndISO(usageToDate.value)
-  );
+if (finISO) {
+  encargosQuery = encargosQuery.lte("created_at", finISO);
 }
 
-if (usageEmployeeFilter.value) {
-  fichasEncargosQuery = fichasEncargosQuery.eq(
-    "employee",
-    usageEmployeeFilter.value
-  );
+if (emp) {
+  encargosQuery = encargosQuery.eq("employee", emp);
 }
 
-const {
-  data: fichasEncargosData,
-  error: fichasEncargosError
-} = await fichasEncargosQuery;
+const { data: encargosData, error: encargosError } =
+  await encargosQuery;
 
-if (fichasEncargosError) {
-  console.error(fichasEncargosError);
+if (encargosError) {
+  console.error(encargosError);
 
   usageSummaryStatus.textContent =
-    `❌ Error al cargar fichas de encargos: ${fichasEncargosError.message}`;
+    `❌ Error al cargar fichas de encargos: ${encargosError.message}`;
 
   return;
 }
 
-const encargosUsage = createEmptyUsageMap();
+for (const movimiento of encargosData || []) {
+  const name = normalizeUsageName(movimiento.concepto);
+  const qty = Number(movimiento.cantidad || 0);
 
-for (const row of fichasEncargosData || []) {
-  const concepto = row.concepto;
-  const cantidad = Number(row.cantidad || 0);
-
-  if (Object.prototype.hasOwnProperty.call(encargosUsage, concepto)) {
-    encargosUsage[concepto] += cantidad;
+  if (encargosUsage[name] !== undefined) {
+    encargosUsage[name] += qty;
   }
 }
 
@@ -4718,4 +5327,5 @@ if (articulosError) {
 
   win.document.close();
 }
+
 
