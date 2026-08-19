@@ -4848,14 +4848,16 @@ printTicketBtn.addEventListener("click", () => {
     ? 0
     : Number(lastSaved.change || 0);
 
-  const itemsHTML = lastSaved.items
+    const itemsHTML = lastSaved.items
     .map(
       (item) => `
         <div class="item">
           <div class="itemNombre">${item.name}</div>
           <div class="itemDatos">
-            <span>${item.qty} x ${money(item.price)}</span>
-            <strong>${money(item.subtotal)}</strong>
+            ${item.qty} x ${money(item.price)}
+          </div>
+          <div class="itemDatos">
+            Importe: ${money(item.subtotal)}
           </div>
         </div>
       `
@@ -4947,9 +4949,8 @@ printTicketBtn.addEventListener("click", () => {
           }
 
           .itemDatos {
-            display: flex;
-            justify-content: space-between;
-            gap: 4px;
+            display: block;
+            margin-top: 1px;
           }
 
           .resumen {
@@ -4957,9 +4958,7 @@ printTicketBtn.addEventListener("click", () => {
           }
 
           .filaTotal {
-            display: flex;
-            justify-content: space-between;
-            gap: 4px;
+            display: block;
             margin: 2px 0;
           }
 
@@ -5017,7 +5016,6 @@ printTicketBtn.addEventListener("click", () => {
 
         <div class="encabezadoItems">
           <span>Producto / Cant.</span>
-          <span>Importe</span>
         </div>
 
         ${itemsHTML}
@@ -5027,29 +5025,25 @@ printTicketBtn.addEventListener("click", () => {
         <div class="resumen">
 
           <div class="filaTotal totalPrincipal">
-            <span>TOTAL</span>
-            <span>${money(lastSaved.total)}</span>
+            TOTAL: ${money(lastSaved.total)}
           </div>
 
           ${
             esTransferencia
               ? `
                 <div class="filaTotal">
-                  <span>TRANSFERENCIA</span>
-                  <span>${money(lastSaved.total)}</span>
+                  TRANSFERENCIA: ${money(lastSaved.total)}
                 </div>
               `
               : `
                 <div class="filaTotal">
-                  <span>EFECTIVO</span>
-                  <span>${money(lastSaved.cash)}</span>
+                  EFECTIVO: ${money(lastSaved.cash)}
                 </div>
               `
           }
 
           <div class="filaTotal">
-            <span>CAMBIO</span>
-            <span>${money(cambioTicket)}</span>
+            CAMBIO: ${money(cambioTicket)}
           </div>
 
         </div>
@@ -5285,24 +5279,20 @@ if (articulosError) {
 
         <div style="border-top:1px dashed #000;margin:5px 0;"></div>
 
-<div style="display:flex;justify-content:space-between;gap:6px;padding-right:24px;font-size:12px;font-weight:bold;">
-  <span>TOTAL</span>
-  <span>${money(total)}</span>
+<div style="font-size:12px;font-weight:bold;margin:2px 0;">
+  TOTAL: ${money(total)}
 </div>
 
-<div style="display:flex;justify-content:space-between;gap:6px;padding-right:24px;">
-  <span>ADELANTO</span>
-  <span>${money(pagado)}</span>
+<div style="margin:2px 0;">
+  ADELANTO: ${money(pagado)}
 </div>
 
-<div style="display:flex;justify-content:space-between;gap:6px;padding-right:24px;">
-  <span>RESTA</span>
-  <span>${money(resta)}</span>
+<div style="margin:2px 0;">
+  RESTA: ${money(resta)}
 </div>
 
-<div style="display:flex;justify-content:space-between;gap:6px;padding-right:24px;">
-  <span>CAMBIO</span>
-  <span>${money(cambioTicket)}</span>
+<div style="margin:2px 0;">
+  CAMBIO: ${money(cambioTicket)}
 </div>
 
 <div style="border-top:1px dashed #000;margin:5px 0;"></div>
