@@ -541,12 +541,30 @@
                 <label for="usageFromDate">Desde</label>
                 <input id="usageFromDate" type="date" />
               </div>
+
+              <div class="field">
+                <label for="usageStartTime">Hora inicial</label>
+                <input
+                  id="usageStartTime"
+                  type="text"
+                  placeholder="Ej. 19:00"
+                />
+              </div>
           
               <div class="field">
                 <label for="usageToDate">Hasta</label>
                 <input id="usageToDate" type="date" />
               </div>
-          
+
+              <div class="field">
+                <label for="usageEndTime">Hora final</label>
+                <input
+                  id="usageEndTime"
+                  type="text"
+                  placeholder="Ej. 20:00"
+                />
+              </div>
+
               <div class="field">
                 <label for="usageEmployeeFilter">Empleado</label>
                 <select id="usageEmployeeFilter">
@@ -672,6 +690,16 @@
               >
                 Guardar / Cerrar corte
               </button>
+
+              <button
+              type="button"
+              id="imprimirCorteBtn"
+              class="ghost"
+              disabled
+            >
+              Imprimir ticket
+            </button>
+
             </div>
         
             <p id="corteStatus" class="status"></p>
@@ -775,6 +803,15 @@
                 <h3 style="margin:0;">
                   Detalle del corte
                 </h3>
+
+                <button
+                type="button"
+                id="imprimirDetalleCorteBtn"
+                class="ghost"
+                style="width:auto;"
+              >
+                Imprimir ticket
+              </button>
             
                 <button
                   type="button"
@@ -842,7 +879,6 @@
         
           </div>
         </section>
-        </div>
 
         <section class="section" id="gastosRepartoSection">
           <div id="consultaGastosReparto" style="display:none;">
@@ -1145,12 +1181,45 @@
 
           </div>
         </section>
+      </div>
 
         <!-- ========================= -->
         <!-- TAB: ENCARGOS -->
         <!-- ========================= -->
         <div id="encargosTab" class="tabContent">
           <section class="section" id="encargoSection">
+
+            <div
+            id="encargosMenu"
+            class="tabs"
+            style="margin-bottom:18px;"
+          >
+            <button
+              type="button"
+              id="btnEncargoRegistro"
+              class="tabBtn active"
+            >
+              Registro de encargo
+            </button>
+          
+            <button
+              type="button"
+              id="btnEncargoPagoEntrega"
+              class="tabBtn"
+            >
+              Pago y entrega
+            </button>
+          
+            <button
+              type="button"
+              id="btnEncargoFichas"
+              class="tabBtn"
+            >
+              Registro de fichas
+            </button>
+          </div>
+
+          <div id="encargoVistaRegistro">
 
             <details class="block" id="encargoRegistroBlock" open>
               <summary>Registro de Encargo</summary>
@@ -1403,6 +1472,10 @@
               </form>
             
                 </details>
+
+              </div>
+
+              <div id="encargoVistaGestion" style="display:none;">
             
             <hr class="sep" />
             
@@ -1484,7 +1557,7 @@
               
               <div class="block" style="margin-top:12px;">
                 <div class="field">
-                  <label for="detailUsoEmployee">Empleado que registra el uso</label>
+                  <label for="detailUsoEmployee">Empleado responsable</label>
                   <select id="detailUsoEmployee">
                     <option value="" selected disabled>Selecciona empleado</option>
                     <option value="Adriana">Adriana</option>
@@ -1493,6 +1566,8 @@
                   </select>
                 </div>
               </div>
+
+              <div id="encargoBloqueFichas">
 
               <div class="block" style="margin-top:12px;">
                 <h3 style="margin:0 0 12px;">Lavadoras usadas</h3>
@@ -1561,6 +1636,9 @@
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div id="encargoBloquePago">
 
               <div class="block" style="margin-top:12px;">
                 <h3 style="margin:0 0 12px;">Pago y entrega</h3>
@@ -1607,13 +1685,40 @@
                   </div>
                 </div>
               </div>
+            </div>
+            <div class="actions">
 
-              <div class="actions">
-                <button type="button" id="saveEncargoUsageBtn" class="primary">Guardar y marcar como entregado</button>
-              </div>
+              <button
+                type="button"
+                id="guardarPagoEntregaBtn"
+                class="primary"
+                style="display:none;"
+              >
+                Guardar pago y entrega
+              </button>
+            
+              <button
+                type="button"
+                id="guardarFichasEncargoBtn"
+                class="primary"
+                style="display:none;"
+              >
+                Guardar fichas
+              </button>
+            
+              <button
+                type="button"
+                id="saveEncargoUsageBtn"
+                style="display:none;"
+              >
+                Guardar cambios
+              </button>
+            
+            </div>
 
               <p id="encargoDetailStatus" class="status"></p>
            </details>
+          </div>
           </section>
         </div>
       </main>
@@ -1665,6 +1770,5 @@
     <script src="js/script.js"></script>
   </body>
 </html>
-
 
 
