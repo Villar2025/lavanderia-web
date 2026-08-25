@@ -1157,7 +1157,7 @@ async function generarCorteTurno() {
 
   const { data, error } = await supabaseClient
   .from("movimientos_caja")
-  .select("metodo_pago, monto, origen, created_at")
+  .select("metodo_pago, monto, origen, referencia_id, created_at")
   .eq("employee", employee)
   .gte("created_at", inicioLocal.toISOString())
   .lte("created_at", finLocal.toISOString())
@@ -3511,6 +3511,8 @@ async function guardarPagoEntregaEncargo() {
       ? "entregado"
       : "pendiente";
 
+  const fechaMovimiento = new Date().toISOString();
+
   if (abonoHoy < 0) {
     encargoDetailStatus.textContent =
       "El abono no puede ser negativo.";
@@ -3545,7 +3547,7 @@ async function guardarPagoEntregaEncargo() {
 
     delivered_at:
       deliveredStatus === "entregado"
-        ? new Date().toISOString()
+        ? fechaMovimiento
         : null,
   };
 
@@ -3593,6 +3595,7 @@ async function guardarPagoEntregaEncargo() {
             metodo_pago: abonoMetodo,
             monto: montoAbonoReal,
             referencia_id: String(currentEncargoId),
+            created_at: fechaMovimiento,
           });
 
       if (movimientoAbonoError) {
@@ -4042,6 +4045,8 @@ const viewEncargosSummaryTotal = $("#viewEncargosSummaryTotal");
 const viewEncargosSummaryEfectivo = $("#viewEncargosSummaryEfectivo");
 const viewEncargosSummaryTransferencia = $("#viewEncargosSummaryTransferencia");
 const viewEncargosSummaryPaid = $("#viewEncargosSummaryPaid");
+const viewEncargosSummaryHoy = $("#viewEncargosSummaryHoy");
+const viewEncargosSummaryAnteriores = $("#viewEncargosSummaryAnteriores");
 const viewEncargosSummaryDue = $("#viewEncargosSummaryDue");
 
 const loadUsageSummaryBtn = $("#loadUsageSummaryBtn");
@@ -4213,6 +4218,27 @@ async function loadViewEncargos() {
   .select("employee, origen, monto, metodo_pago, referencia_id, created_at")
   .in("origen", ["encargo", "abono_encargo"]);
 
+  if (viewEncargoFromDate && viewEncargoFromDate.value) {
+    movimientosCajaQuery = movimientosCajaQuery.gte(
+      "created_at",
+      localDateStartISO(viewEncargoFromDate.value)
+    );
+  }
+  
+  if (viewEncargoToDate && viewEncargoToDate.value) {
+    movimientosCajaQuery = movimientosCajaQuery.lte(
+      "created_at",
+      localDateEndISO(viewEncargoToDate.value)
+    );
+  }
+  
+  if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
+    movimientosCajaQuery = movimientosCajaQuery.eq(
+      "employee",
+      viewEncargoEmployeeFilter.value
+    );
+  }
+
 
 if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
   movimientosCajaQuery = movimientosCajaQuery.eq(
@@ -4235,22 +4261,71 @@ if (movimientosCajaError) {
   return;
 }
 
-const idsEncargosVisibles = new Set(
-  (data || []).map((row) => String(row.id))
+const referenciasMovimientos = [
+  ...new Set(
+    (movimientosCajaData || [])
+      .map((movimiento) => String(movimiento.referencia_id || ""))
+      .filter(Boolean)
+  ),
+];
+
+let fechasEncargosPorId = new Map();
+
+if (referenciasMovimientos.length > 0) {
+  const { data: encargosReferenciasData, error: encargosReferenciasError } =
+    await supabaseClient
+      .from("encargos")
+      .select("id, created_at")
+      .in("id", referenciasMovimientos);
+
+  if (encargosReferenciasError) {
+    console.error(
+      "Error al consultar fechas de encargos:",
+      encargosReferenciasError
+    );
+  } else {
+    fechasEncargosPorId = new Map(
+      (encargosReferenciasData || []).map((encargo) => [
+        String(encargo.id),
+        encargo.created_at,
+      ])
+    );
+  }
+}
+
+const movimientosEncargosPeriodo = movimientosCajaData || [];
+
+const fechaInicioSeleccionada =
+  viewEncargoFromDate && viewEncargoFromDate.value
+    ? localDateStartISO(viewEncargoFromDate.value)
+    : null;
+
+const totalCobrosAnteriores = movimientosEncargosPeriodo.reduce(
+  (suma, movimiento) => {
+    const fechaCreacionEncargo = fechasEncargosPorId.get(
+      String(movimiento.referencia_id || "")
+    );
+
+    if (
+      fechaInicioSeleccionada &&
+      fechaCreacionEncargo &&
+      new Date(fechaCreacionEncargo) < new Date(fechaInicioSeleccionada)
+    ) {
+      return suma + Number(movimiento.monto || 0);
+    }
+
+    return suma;
+  },
+  0
 );
 
-const movimientosEncargosVisibles = (movimientosCajaData || []).filter(
-  (movimiento) =>
-    idsEncargosVisibles.has(String(movimiento.referencia_id || ""))
-);
-
-const totalCobradoEmpleado = movimientosEncargosVisibles.reduce(
+const totalCobradoEmpleado = movimientosEncargosPeriodo.reduce(
   (suma, movimiento) =>
     suma + Number(movimiento.monto || 0),
   0
 );
 
-const totalEfectivoEncargos = movimientosEncargosVisibles.reduce(
+const totalEfectivoEncargos = movimientosEncargosPeriodo.reduce(
   (suma, movimiento) =>
     movimiento.metodo_pago === "efectivo"
       ? suma + Number(movimiento.monto || 0)
@@ -4258,7 +4333,7 @@ const totalEfectivoEncargos = movimientosEncargosVisibles.reduce(
   0
 );
 
-const totalTransferenciaEncargos = movimientosEncargosVisibles.reduce(
+const totalTransferenciaEncargos = movimientosEncargosPeriodo.reduce(
   (suma, movimiento) =>
     movimiento.metodo_pago === "transferencia"
       ? suma + Number(movimiento.monto || 0)
@@ -4348,6 +4423,21 @@ viewEncargosSummaryTransferencia.textContent =
 
 viewEncargosSummaryPaid.textContent = money(totalCobrado);
 viewEncargosSummaryDue.textContent = money(totalPorCobrar);
+
+const totalCobrosHoy = Math.max(
+  totalCobradoEmpleado - totalCobrosAnteriores,
+  0
+);
+
+if (viewEncargosSummaryHoy) {
+  viewEncargosSummaryHoy.textContent =
+    money(totalCobrosHoy);
+}
+
+if (viewEncargosSummaryAnteriores) {
+  viewEncargosSummaryAnteriores.textContent =
+    money(totalCobrosAnteriores);
+}
 
 viewEncargosSummary.style.display = "block";
 
@@ -5317,5 +5407,7 @@ if (articulosError) {
 
   win.document.close();
 }
+
+
 
 
