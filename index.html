@@ -65,7 +65,13 @@
                     <option value="Solo secado 9 kg (30 min)" data-price="80">Solo secado 9 kg (30 min) — $80</option>
                   </select>
 
-                  <input class="qtyInput" type="number" min="1" value="1" />
+                  <input
+                  class="qtyInput"
+                  type="number"
+                  min="1"
+                  value="1"
+                  style="width:70px;"
+                />
                   <button type="button" class="addBtn">Agregar</button>
                 </div>
 
@@ -118,9 +124,33 @@
                     <option value="Pinol" data-price="19">Pinol — $19</option>
                     <option value="Cloro" data-price="15">Cloro — $15</option>
                     <option value="Jabón en polvo" data-price="19">Jabón en polvo — $19</option>
+                    <option value="Otro" data-price="0">Otro — precio libre</option>
                   </select>
 
-                  <input class="qtyInput" type="number" min="1" value="1" />
+                  <input
+                  type="number"
+                  class="precioOtroInput"
+                  placeholder="Precio"
+                  min="1"
+                  step="1"
+                  style="display:none;"
+                />
+
+                <button
+                type="button"
+                class="agregarOtroBtn addBtn secondary"
+                style="display:none;"
+              >
+                Agregar
+              </button>
+              
+              <input
+                class="qtyInput"
+                type="number"
+                min="1"
+                value="1"
+                style="width:70px; flex:none;"
+              />
                   <button type="button" class="addBtn">Agregar</button>
                 </div>
               </details>
@@ -420,7 +450,78 @@
                   <tbody id="viewEncargosBody"></tbody>
                 </table>
               </div>
-
+              <div class="block" style="margin-top:20px;">
+                <h3 style="margin:0 0 12px;">
+                  Encargos anteriores pagados hoy
+                </h3>
+              
+                <div class="tableWrap">
+                  <table
+                    class="table"
+                    aria-label="Encargos anteriores pagados hoy"
+                  >
+                    <thead>
+                      <tr>
+                        <th>Fecha encargo</th>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Total</th>
+                        <th>Pagó hoy</th>
+                        <th>Total pagado</th>
+                        <th>Por cobrar</th>
+                        <th>Estado</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+              
+                    <tbody id="encargosPagadosHoyBody"></tbody>
+                  </table>
+                </div>
+              
+                <p
+                  id="encargosPagadosHoyStatus"
+                  class="status"
+                ></p>
+              </div>
+              <div class="block" style="margin-top:20px;">
+                <h3 style="margin:0 0 12px;">Encargos anteriores</h3>
+              
+                <div class="grid">
+                  <div class="field">
+                    <label for="buscarEncargoAnterior">
+                      Buscar cliente o teléfono
+                    </label>
+              
+                    <input
+                      id="buscarEncargoAnterior"
+                      type="text"
+                      placeholder="Nombre o teléfono"
+                    />
+                  </div>
+                </div>
+              
+                <div class="tableWrap" style="margin-top:12px;">
+                  <table
+                    class="table"
+                    aria-label="Tabla de encargos anteriores"
+                  >
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Total</th>
+                        <th>Pagado</th>
+                        <th>Por cobrar</th>
+                        <th>Estado</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+              
+                    <tbody id="encargosAnterioresBody"></tbody>
+                  </table>
+                </div>
+              </div>
               <p id="viewEncargosStatus" class="status"></p>
 
               <div id="viewEncargosSummary" class="block" style="margin-top:10px; display:none;">
@@ -1489,6 +1590,7 @@
             
             <hr class="sep" />
             
+
             <details class="block" id="encargosListBlock">
               <summary>Lista de encargos</summary>
 
@@ -1541,6 +1643,95 @@
 
               <p id="encargosListStatus" class="status"></p>
             </details>
+
+            <details
+            id="buscadorEncargosPago"
+            class="block"
+            style="margin-top:12px; display:none;"
+          >
+            <summary>Buscar encargo anterior</summary>
+          
+            <div style="margin-top:12px;">
+              <div class="grid">
+                <div class="field">
+                  <label for="buscarEncargoPago">
+                    Buscar cliente o teléfono
+                  </label>
+          
+                  <input
+                    id="buscarEncargoPago"
+                    type="text"
+                    placeholder="Nombre o teléfono"
+                  />
+                </div>
+              </div>
+          
+              <div class="tableWrap" style="margin-top:12px;">
+                <table class="table" aria-label="Encargos anteriores para pago">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Cliente</th>
+                      <th>Teléfono</th>
+                      <th>Total</th>
+                      <th>Pagado</th>
+                      <th>Por cobrar</th>
+                      <th>Estado</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+          
+                  <tbody id="encargosPagoBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+
+          <details
+          id="buscadorEncargosPago"
+          class="block"
+          style="margin-top:12px; display:none;"
+        >
+          <summary>Buscar encargo anterior</summary>
+        
+          <div style="margin-top:12px;">
+            <div class="grid">
+              <div class="field">
+                <label for="buscarEncargoPago">
+                  Buscar cliente o teléfono
+                </label>
+        
+                <input
+                  id="buscarEncargoPago"
+                  type="text"
+                  placeholder="Nombre o teléfono"
+                />
+              </div>
+            </div>
+        
+            <div class="tableWrap" style="margin-top:12px;">
+              <table
+                class="table"
+                aria-label="Encargos anteriores para pago"
+              >
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Teléfono</th>
+                    <th>Total</th>
+                    <th>Pagado</th>
+                    <th>Por cobrar</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+        
+                <tbody id="encargosPagoBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
 
             <details class="block" id="encargoDetailPanel" style="display:none;">
               <summary>Detalle del encargo</summary>
@@ -1727,11 +1918,11 @@
             </div>
 
               <p id="encargoDetailStatus" class="status"></p>
-           </details>
-          </div>
-          </section>
-        </div>
-      </main>
+              
+
+      </section>
+    </div>
+  </main>
 
       <footer class="footer">
         <small>Lavandería • Control de ventas</small>
