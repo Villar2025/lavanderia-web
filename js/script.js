@@ -185,6 +185,7 @@ function addItem({ name, category, price, qty }) {
 // =====================
 document.querySelectorAll(".addBtn").forEach((btn) => {
   if (btn.id === "addCustomDry") return;
+  if (btn.classList.contains("agregarOtroBtn")) return;
 
   btn.addEventListener("click", () => {
     const row = btn.closest(".row");
@@ -220,17 +221,88 @@ document.querySelectorAll(".productSelect").forEach((select) => {
     const qty = row.querySelector(".qtyInput");
     if (!qty) return;
 
+    const precioOtroInput = row.querySelector(".precioOtroInput");
+    const agregarOtroBtn = row.querySelector(".agregarOtroBtn");
+
     if (!select.value) return;
 
     const opt = select.options[select.selectedIndex];
-    const price = opt.dataset.price;
+    const price = Number(opt.dataset.price || 0);
     const name = select.value;
     const category = select.dataset.category;
 
-    addItem({ name, category, price, qty: qty.value });
+    // Si selecciona "Otro", esperamos a que escriba el precio
+    if (name === "Otro") {
+      if (precioOtroInput) {
+        precioOtroInput.style.display = "block";
+        precioOtroInput.value = "";
+      }
+
+      if (agregarOtroBtn) {
+        agregarOtroBtn.style.display = "block";
+      }
+
+      statusEl.textContent = "";
+      return;
+    }
+
+    // Para los demás productos ocultamos el precio libre
+    if (precioOtroInput) {
+      precioOtroInput.style.display = "none";
+      precioOtroInput.value = "";
+    }
+
+    if (agregarOtroBtn) {
+      agregarOtroBtn.style.display = "none";
+    }
+
+    // Los productos normales se siguen agregando automáticamente
+    addItem({
+      name,
+      category,
+      price,
+      qty: qty.value
+    });
 
     select.selectedIndex = 0;
     qty.value = 1;
+  });
+});
+
+document.querySelectorAll(".agregarOtroBtn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const row = btn.closest(".row");
+    if (!row) return;
+
+    const select = row.querySelector(".productSelect");
+    const qty = row.querySelector(".qtyInput");
+    const precioOtroInput = row.querySelector(".precioOtroInput");
+
+    if (!select || !qty || !precioOtroInput) return;
+
+    if (select.value !== "Otro") return;
+
+    const price = Number(precioOtroInput.value || 0);
+
+    if (!Number.isFinite(price) || price <= 0) {
+      statusEl.textContent = "Escribe un precio válido para Otro.";
+      return;
+    }
+
+    addItem({
+      name: "Otro",
+      category: select.dataset.category,
+      price,
+      qty: qty.value
+    });
+
+    select.selectedIndex = 0;
+    qty.value = 1;
+    precioOtroInput.value = "";
+    precioOtroInput.style.display = "none";
+    btn.style.display = "none";
+
+    statusEl.textContent = "";
   });
 });
 
@@ -735,7 +807,7 @@ function resetViewEncargosSection() {
   if (viewEncargosSummaryTotal) viewEncargosSummaryTotal.textContent = "$0";
   if (viewEncargosSummaryPaid) viewEncargosSummaryPaid.textContent = "$0";
   if (viewEncargosSummaryDue) viewEncargosSummaryDue.textContent = "$0";
-  if (viewEncargosSummaryCambio) viewEncargosSummaryCambio.textContent = "$0";
+  //if (viewEncargosSummaryCambio) viewEncargosSummaryCambio.textContent = "$0";
 
   if (viewEncargoDetailPanel) viewEncargoDetailPanel.style.display = "none";
 
@@ -2968,6 +3040,10 @@ const btnEncargoRegistro = $("#btnEncargoRegistro");
 const btnEncargoPagoEntrega = $("#btnEncargoPagoEntrega");
 const btnEncargoFichas = $("#btnEncargoFichas");
 
+const buscadorEncargosPago = $("#buscadorEncargosPago");
+const buscarEncargoPago = $("#buscarEncargoPago");
+const encargosPagoBody = $("#encargosPagoBody");
+
 const encargoVistaRegistro = $("#encargoVistaRegistro");
 const encargoVistaGestion = $("#encargoVistaGestion");
 
@@ -3598,18 +3674,18 @@ async function guardarPagoEntregaEncargo() {
             created_at: fechaMovimiento,
           });
 
-      if (movimientoAbonoError) {
-        console.error(
-          "Error al registrar abono en caja:",
-          movimientoAbonoError
-        );
-
-        encargoDetailStatus.textContent =
-          "⚠️ El pago se guardó, pero no se pudo registrar el abono en el corte de caja.";
-
-        guardarPagoEntregaBtn.disabled = false;
-        return;
-      }
+          if (movimientoAbonoError) {
+            console.error(
+              "Error al registrar abono en caja:",
+              movimientoAbonoError
+            );
+          
+            encargoDetailStatus.textContent =
+              `❌ Error al registrar el abono en caja: ${movimientoAbonoError.message || "Error desconocido"}`;
+          
+            guardarPagoEntregaBtn.disabled = false;
+            return;
+          }
     }
   }
 
@@ -3882,6 +3958,11 @@ function mostrarVistaEncargos(tipo) {
   encargoVistaGestion.style.display =
     tipo === "registro" ? "none" : "";
 
+    if (buscadorEncargosPago) {
+      buscadorEncargosPago.style.display =
+        tipo === "pago" ? "block" : "none";
+    }
+
   // Dentro del detalle del encargo
   if (encargoBloquePago) {
     encargoBloquePago.style.display =
@@ -4037,7 +4118,11 @@ const viewEncargoToDate = $("#viewEncargoToDate");
 const viewEncargoEmployeeFilter = $("#viewEncargoEmployeeFilter");
 const loadViewEncargosBtn = $("#loadViewEncargosBtn");
 const viewEncargosBody = $("#viewEncargosBody");
+const encargosAnterioresBody = $("#encargosAnterioresBody");
+const buscarEncargoAnterior = $("#buscarEncargoAnterior");
 const viewEncargosStatus = $("#viewEncargosStatus");
+const encargosPagadosHoyBody = $("#encargosPagadosHoyBody");
+const encargosPagadosHoyStatus = $("#encargosPagadosHoyStatus");
 
 const viewEncargosSummary = $("#viewEncargosSummary");
 const viewEncargosSummaryCount = $("#viewEncargosSummaryCount");
@@ -4162,6 +4247,431 @@ function buildEncargoUsageRows(row) {
   return usages
     .filter(([, qty]) => Number(qty || 0) > 0)
     .map(([name, qty]) => ({ name, qty: Number(qty || 0) }));
+}
+
+async function loadEncargosAnteriores() {
+  if (!encargosAnterioresBody) return;
+
+  ensureSupabase();
+
+  encargosAnterioresBody.innerHTML = `
+    <tr>
+      <td colspan="8">Cargando encargos anteriores...</td>
+    </tr>
+  `;
+
+  // Tomamos como referencia la fecha seleccionada.
+  // Si no hay fecha, usamos hoy.
+  const fechaReferencia =
+    viewEncargoFromDate?.value ||
+    new Date().toLocaleDateString("en-CA");
+
+  const inicioDia = localDateStartISO(fechaReferencia);
+
+  let query = supabaseClient
+    .from("encargos")
+    .select(`
+      id,
+      created_at,
+      client_name,
+      client_phone,
+      total,
+      amount_paid,
+      payment_status,
+      delivered_status
+    `)
+    .lt("created_at", inicioDia)
+    .order("created_at", { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error cargando encargos anteriores:", error);
+
+    encargosAnterioresBody.innerHTML = `
+      <tr>
+        <td colspan="8">❌ No se pudieron cargar los encargos anteriores.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  const textoBusqueda =
+    buscarEncargoAnterior?.value?.trim().toLowerCase() || "";
+
+    const encargosFiltrados = (data || []).filter((encargo) => {
+      const cliente = String(encargo.client_name || "")
+        .trim()
+        .toLowerCase();
+    
+      const telefono = String(encargo.client_phone || "")
+        .trim()
+        .toLowerCase();
+    
+      const busqueda = textoBusqueda.trim().toLowerCase();
+    
+      if (busqueda === "") {
+        return false;
+      }
+    
+      return (
+        cliente.startsWith(busqueda) ||
+        telefono.startsWith(busqueda)
+      );
+    });
+
+  if (!encargosFiltrados.length) {
+    encargosAnterioresBody.innerHTML = `
+      <tr>
+        <td colspan="8">No hay encargos anteriores para mostrar.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  encargosAnterioresBody.innerHTML = "";
+
+  encargosFiltrados.forEach((encargo) => {
+    const total = Number(encargo.total || 0);
+    const pagado = Number(encargo.amount_paid || 0);
+    const porCobrar = Math.max(total - pagado, 0);
+
+    const fecha = new Date(encargo.created_at)
+      .toLocaleDateString("es-MX");
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${fecha}</td>
+      <td>${encargo.client_name || ""}</td>
+      <td>${encargo.client_phone || ""}</td>
+      <td>${money(total)}</td>
+      <td>${money(pagado)}</td>
+      <td>${money(porCobrar)}</td>
+      <td>${encargo.payment_status || ""}</td>
+      <td>
+        <button
+          type="button"
+          class="btn btn-small abrir-encargo-anterior"
+          data-id="${encargo.id}"
+        >
+          Abrir
+        </button>
+      </td>
+    `;
+
+    encargosAnterioresBody.appendChild(tr);
+  });
+
+  encargosAnterioresBody
+  .querySelectorAll(".abrir-encargo-anterior")
+  .forEach((boton) => {
+    boton.addEventListener("click", async () => {
+      const tabEncargos = document.querySelector(
+        '.tabBtn[data-tab="encargosTab"]'
+      );
+
+      if (tabEncargos) {
+        tabEncargos.click();
+      }
+
+      mostrarVistaEncargos("pago");
+
+      await openEncargoDetail(boton.dataset.id);
+
+      encargoDetailPanel.style.display = "block";
+      encargoDetailPanel.open = true;
+
+      if (encargosListBlock) {
+        encargosListBlock.open = false;
+      }
+    });
+  });
+}
+
+async function loadEncargosPago() {
+  if (!encargosPagoBody) return;
+
+  ensureSupabase();
+
+  const busqueda =
+    buscarEncargoPago?.value?.trim().toLowerCase() || "";
+
+  encargosPagoBody.innerHTML = "";
+
+  if (busqueda === "") {
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("encargos")
+    .select(`
+      id,
+      created_at,
+      client_name,
+      client_phone,
+      total,
+      amount_paid,
+      payment_status,
+      delivered_status
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error cargando encargos para pago:", error);
+
+    encargosPagoBody.innerHTML = `
+      <tr>
+        <td colspan="8">
+          ❌ No se pudieron cargar los encargos.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  const resultados = (data || []).filter((encargo) => {
+    const cliente = String(encargo.client_name || "")
+      .trim()
+      .toLowerCase();
+
+    const telefono = String(encargo.client_phone || "")
+      .trim()
+      .toLowerCase();
+
+    return (
+      cliente.startsWith(busqueda) ||
+      telefono.startsWith(busqueda)
+    );
+  });
+
+  if (!resultados.length) {
+    encargosPagoBody.innerHTML = `
+      <tr>
+        <td colspan="8">
+          No se encontraron encargos.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  resultados.forEach((encargo) => {
+    const total = Number(encargo.total || 0);
+    const pagado = Number(encargo.amount_paid || 0);
+    const porCobrar = Math.max(total - pagado, 0);
+
+    const fecha = new Date(encargo.created_at)
+      .toLocaleDateString("es-MX");
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${fecha}</td>
+      <td>${encargo.client_name || ""}</td>
+      <td>${encargo.client_phone || ""}</td>
+      <td>${money(total)}</td>
+      <td>${money(pagado)}</td>
+      <td>${money(porCobrar)}</td>
+      <td>${encargo.payment_status || ""}</td>
+      <td>
+        <button
+          type="button"
+          class="btn abrir-encargo-pago"
+          data-id="${encargo.id}"
+        >
+          Abrir
+        </button>
+      </td>
+    `;
+
+    encargosPagoBody.appendChild(tr);
+  });
+
+  encargosPagoBody
+    .querySelectorAll(".abrir-encargo-pago")
+    .forEach((boton) => {
+      boton.addEventListener("click", async () => {
+        await openEncargoDetail(boton.dataset.id);
+
+        encargoDetailPanel.style.display = "block";
+        encargoDetailPanel.open = true;
+
+        if (encargosListBlock) {
+          encargosListBlock.open = false;
+        }
+      });
+    });
+}
+
+async function loadEncargosPagadosHoy() {
+  if (!encargosPagadosHoyBody || !encargosPagadosHoyStatus) return;
+
+  encargosPagadosHoyBody.innerHTML = "";
+  encargosPagadosHoyStatus.textContent = "Cargando pagos de hoy...";
+
+  // Fecha de hoy en horario local
+  const fechaReferencia =
+  viewEncargoFromDate?.value ||
+  new Date().toLocaleDateString("en-CA");
+
+  const inicioHoy = localDateStartISO(fechaReferencia);
+  const finHoy = localDateEndISO(fechaReferencia);
+
+  // 1. Buscar movimientos de dinero de encargos realizados hoy
+  const {
+    data: movimientos,
+    error: movimientosError
+  } = await supabaseClient
+    .from("movimientos_caja")
+    .select(`
+      referencia_id,
+      monto,
+      metodo_pago,
+      created_at
+    `)
+    .in("origen", ["encargo", "abono_encargo"])
+    .gte("created_at", inicioHoy)
+    .lte("created_at", finHoy);
+
+  if (movimientosError) {
+    console.error(movimientosError);
+
+    encargosPagadosHoyStatus.textContent =
+      `❌ Error al cargar pagos: ${movimientosError.message}`;
+
+    return;
+  }
+
+  if (!movimientos || movimientos.length === 0) {
+    encargosPagadosHoyStatus.textContent =
+      "No hay pagos de encargos anteriores realizados hoy.";
+    return;
+  }
+
+  // 2. Obtener los IDs de los encargos que tuvieron movimiento hoy
+  const idsEncargos = [
+    ...new Set(
+      movimientos
+        .map((mov) => String(mov.referencia_id || ""))
+        .filter(Boolean)
+    )
+  ];
+
+  if (idsEncargos.length === 0) {
+    encargosPagadosHoyStatus.textContent =
+      "No hay pagos de encargos anteriores realizados hoy.";
+    return;
+  }
+
+  // 3. Buscar los encargos correspondientes
+  const {
+    data: encargos,
+    error: encargosError
+  } = await supabaseClient
+    .from("encargos")
+    .select(`
+      id,
+      created_at,
+      client_name,
+      client_phone,
+      total,
+      amount_paid,
+      amount_due,
+      payment_status
+    `)
+    .in("id", idsEncargos);
+
+  if (encargosError) {
+    console.error(encargosError);
+
+    encargosPagadosHoyStatus.textContent =
+      `❌ Error al cargar encargos: ${encargosError.message}`;
+
+    return;
+  }
+
+  // 4. Dejar solamente encargos creados ANTES de hoy
+  const encargosAnteriores = (encargos || []).filter((encargo) => {
+    return new Date(encargo.created_at) < new Date(inicioHoy);
+  });
+
+  if (encargosAnteriores.length === 0) {
+    encargosPagadosHoyStatus.textContent =
+      "No hay pagos de encargos anteriores realizados hoy.";
+    return;
+  }
+
+  // 5. Mostrar cada encargo
+  encargosAnteriores.forEach((encargo) => {
+    const movimientosEncargo = movimientos.filter(
+      (mov) => String(mov.referencia_id) === String(encargo.id)
+    );
+
+    const pagadoHoy = movimientosEncargo.reduce(
+      (sum, mov) => sum + Number(mov.monto || 0),
+      0
+    );
+
+    const total = Number(encargo.total || 0);
+    const totalPagado = Number(encargo.amount_paid || 0);
+    const porCobrar = Math.max(0, total - totalPagado);
+
+    const fecha = new Date(encargo.created_at)
+      .toLocaleDateString("es-MX");
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${fecha}</td>
+      <td>${encargo.client_name || ""}</td>
+      <td>${encargo.client_phone || ""}</td>
+      <td>${money(total)}</td>
+      <td><strong>${money(pagadoHoy)}</strong></td>
+      <td>${money(totalPagado)}</td>
+      <td>${money(porCobrar)}</td>
+      <td>${encargo.payment_status || ""}</td>
+      <td>
+        <button
+          type="button"
+          class="btn abrir-encargo-pagado-hoy"
+          data-id="${encargo.id}"
+        >
+          Abrir
+        </button>
+      </td>
+    `;
+
+    encargosPagadosHoyBody.appendChild(tr);
+  });
+
+  encargosPagadosHoyStatus.textContent =
+    `${encargosAnteriores.length} encargo(s) anterior(es) con pago hoy.`;
+
+    encargosPagadosHoyBody
+  .querySelectorAll(".abrir-encargo-pagado-hoy")
+  .forEach((boton) => {
+    boton.addEventListener("click", async () => {
+      const tabEncargos = document.querySelector(
+        '.tabBtn[data-tab="encargosTab"]'
+      );
+
+      if (tabEncargos) {
+        tabEncargos.click();
+      }
+
+      mostrarVistaEncargos("pago");
+
+      await openEncargoDetail(boton.dataset.id);
+
+      encargoDetailPanel.style.display = "block";
+      encargoDetailPanel.open = true;
+
+      if (encargosListBlock) {
+        encargosListBlock.open = false;
+      }
+    });
+  });
 }
 
 async function loadViewEncargos() {
@@ -4295,22 +4805,31 @@ if (referenciasMovimientos.length > 0) {
 
 const movimientosEncargosPeriodo = movimientosCajaData || [];
 
-const fechaInicioSeleccionada =
-  viewEncargoFromDate && viewEncargoFromDate.value
-    ? localDateStartISO(viewEncargoFromDate.value)
-    : null;
-
 const totalCobrosAnteriores = movimientosEncargosPeriodo.reduce(
   (suma, movimiento) => {
-    const fechaCreacionEncargo = fechasEncargosPorId.get(
-      String(movimiento.referencia_id || "")
+    const referenciaId = String(movimiento.referencia_id || "");
+    const fechaCreacionEncargo = fechasEncargosPorId.get(referenciaId);
+
+    if (!fechaCreacionEncargo || !movimiento.created_at) {
+      return suma;
+    }
+
+    const fechaEncargo = new Date(fechaCreacionEncargo);
+    const fechaMovimiento = new Date(movimiento.created_at);
+
+    const diaEncargo = new Date(
+      fechaEncargo.getFullYear(),
+      fechaEncargo.getMonth(),
+      fechaEncargo.getDate()
     );
 
-    if (
-      fechaInicioSeleccionada &&
-      fechaCreacionEncargo &&
-      new Date(fechaCreacionEncargo) < new Date(fechaInicioSeleccionada)
-    ) {
+    const diaMovimiento = new Date(
+      fechaMovimiento.getFullYear(),
+      fechaMovimiento.getMonth(),
+      fechaMovimiento.getDate()
+    );
+
+    if (diaMovimiento > diaEncargo) {
       return suma + Number(movimiento.monto || 0);
     }
 
@@ -4424,8 +4943,36 @@ viewEncargosSummaryTransferencia.textContent =
 viewEncargosSummaryPaid.textContent = money(totalCobrado);
 viewEncargosSummaryDue.textContent = money(totalPorCobrar);
 
-const totalCobrosHoy = Math.max(
-  totalCobradoEmpleado - totalCobrosAnteriores,
+const totalCobrosHoy = movimientosEncargosPeriodo.reduce(
+  (suma, movimiento) => {
+    const referenciaId = String(movimiento.referencia_id || "");
+    const fechaCreacionEncargo = fechasEncargosPorId.get(referenciaId);
+
+    if (!fechaCreacionEncargo || !movimiento.created_at) {
+      return suma;
+    }
+
+    const fechaEncargo = new Date(fechaCreacionEncargo);
+    const fechaMovimiento = new Date(movimiento.created_at);
+
+    const diaEncargo = new Date(
+      fechaEncargo.getFullYear(),
+      fechaEncargo.getMonth(),
+      fechaEncargo.getDate()
+    );
+
+    const diaMovimiento = new Date(
+      fechaMovimiento.getFullYear(),
+      fechaMovimiento.getMonth(),
+      fechaMovimiento.getDate()
+    );
+
+    if (diaMovimiento.getTime() === diaEncargo.getTime()) {
+      return suma + Number(movimiento.monto || 0);
+    }
+
+    return suma;
+  },
   0
 );
 
@@ -4442,6 +4989,8 @@ if (viewEncargosSummaryAnteriores) {
 viewEncargosSummary.style.display = "block";
 
   viewEncargosStatus.textContent = `Listo: ${totalEncargos} encargo(s).`;
+
+  await loadEncargosPagadosHoy();
 
   for (const row of dataFiltrada) {
     const total = Number(row.total || 0);
@@ -4509,6 +5058,8 @@ viewEncargosSummary.style.display = "block";
     `;
     viewEncargosBody.appendChild(tr);
   }
+
+  await loadEncargosAnteriores();
 }
 
 async function loadViewEncargoDetail(encargoId) {
@@ -4846,6 +5397,18 @@ for (const movimiento of encargosData || []) {
 
 if (loadViewEncargosBtn) {
   loadViewEncargosBtn.addEventListener("click", loadViewEncargos);
+}
+
+if (buscarEncargoAnterior) {
+  buscarEncargoAnterior.addEventListener("input", async () => {
+    await loadEncargosAnteriores();
+  });
+}
+
+if (buscarEncargoPago) {
+  buscarEncargoPago.addEventListener("input", async () => {
+    await loadEncargosPago();
+  });
 }
 
 if (viewEncargosBody) {
