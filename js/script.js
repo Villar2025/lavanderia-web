@@ -373,6 +373,37 @@ salePaymentMethod.addEventListener("change", () => {
 // =====================
 // Guardar venta (Opción A: ventas + venta_items)
 // =====================
+
+async function rollbackVentaCompleta(ventaId) {
+  const referenciaId = String(ventaId);
+
+  // 1. Eliminar cualquier movimiento de caja de esta venta
+  await supabaseClient
+    .from("movimientos_caja")
+    .delete()
+    .eq("origen", "auto_servicio")
+    .eq("referencia_id", referenciaId);
+
+  // 2. Eliminar todas las fichas de esta venta
+  await supabaseClient
+    .from("movimientos_fichas")
+    .delete()
+    .eq("origen", "auto_servicio")
+    .eq("referencia_id", referenciaId);
+
+  // 3. Eliminar artículos
+  await supabaseClient
+    .from("venta_items")
+    .delete()
+    .eq("venta_id", ventaId);
+
+  // 4. Finalmente eliminar la venta
+  await supabaseClient
+    .from("ventas")
+    .delete()
+    .eq("id", ventaId);
+}
+
 async function saveToSupabase(salePayload) {
   ensureSupabase();
 
@@ -408,11 +439,16 @@ async function saveToSupabase(salePayload) {
     .from("venta_items")
     .insert(itemsRows);
 
-  if (itemsError) {
-    console.error(itemsError);
-    await supabaseClient.from("ventas").delete().eq("id", venta.id);
-    return { ok: false, error: itemsError.message };
-  }
+    if (itemsError) {
+      console.error(itemsError);
+    
+      await rollbackVentaCompleta(venta.id);
+    
+      return {
+        ok: false,
+        error: itemsError.message
+      };
+    }
 
   const fichasRows = salePayload.items.map((item) => {
     let concepto = item.name;
@@ -446,27 +482,19 @@ async function saveToSupabase(salePayload) {
     .from("movimientos_fichas")
     .insert(fichasRows);
   
-  if (fichasError) {
-    console.error(
-      "Error al registrar fichas de auto servicio:",
-      fichasError
-    );
-  
-    await supabaseClient
-      .from("venta_items")
-      .delete()
-      .eq("venta_id", venta.id);
-  
-    await supabaseClient
-      .from("ventas")
-      .delete()
-      .eq("id", venta.id);
-  
-    return {
-      ok: false,
-      error: "No se pudieron registrar las fichas de la venta."
-    };
-  }
+    if (fichasError) {
+      console.error(
+        "Error al registrar fichas de auto servicio:",
+        fichasError
+      );
+    
+      await rollbackVentaCompleta(venta.id);
+    
+      return {
+        ok: false,
+        error: "No se pudieron registrar las fichas de la venta."
+      };
+    }
 
   const { error: movimientoError } = await supabaseClient
   .from("movimientos_caja")
@@ -478,24 +506,19 @@ async function saveToSupabase(salePayload) {
     referencia_id: String(venta.id),
   });
 
-if (movimientoError) {
-  console.error("Error al registrar movimiento de caja:", movimientoError);
-
-  await supabaseClient
-    .from("venta_items")
-    .delete()
-    .eq("venta_id", venta.id);
-
-  await supabaseClient
-    .from("ventas")
-    .delete()
-    .eq("id", venta.id);
-
-  return {
-    ok: false,
-    error: "No se pudo registrar el movimiento de caja."
-  };
-}
+  if (movimientoError) {
+    console.error(
+      "Error al registrar movimiento de caja:",
+      movimientoError
+    );
+  
+    await rollbackVentaCompleta(venta.id);
+  
+    return {
+      ok: false,
+      error: "No se pudo registrar el movimiento de caja."
+    };
+  }
 
   return { ok: true, id: venta.id };
 }
@@ -523,6 +546,14 @@ saleForm.addEventListener("submit", async (e) => {
       : cash - total;
 
   if (!Number.isFinite(cash) || cash <= 0) return (statusEl.textContent = "Escribe el dinero recibido.");
+  if (
+    paymentMethod === "transferencia" &&
+    cash < total
+  ) {
+    statusEl.textContent =
+      "La transferencia debe cubrir el total de la venta.";
+    return;
+  }
   if (change < 0) return (statusEl.textContent = "El dinero recibido no alcanza para cubrir el total.");
 
   const salePayload = {
@@ -689,7 +720,9 @@ if (ventaIds.length > 0) {
 summaryCount.textContent = totalVentas;
 summaryEfectivo.textContent = money(totalEfectivo);
 summaryTransferencia.textContent = money(totalTransferencia);
-summaryTotal.textContent = money(totalIngreso);
+summaryTotal.textContent = money(
+  totalEfectivo + totalTransferencia
+);
 
 salesSummary.style.display = "block";
 
@@ -1232,7 +1265,7 @@ async function generarCorteTurno() {
   .select("metodo_pago, monto, origen, referencia_id, created_at")
   .eq("employee", employee)
   .gte("created_at", inicioLocal.toISOString())
-  .lte("created_at", finLocal.toISOString())
+  .lt("created_at", finLocal.toISOString())
   .order("created_at", { ascending: true });
 
   if (error) {
@@ -1266,7 +1299,7 @@ async function generarCorteTurno() {
   .select("origen, concepto, cantidad, created_at")
   .eq("employee", employee)
   .gte("created_at", inicioLocal.toISOString())
-  .lte("created_at", finLocal.toISOString())
+  .lt("created_at", finLocal.toISOString())
   .order("created_at", { ascending: true });
 
 if (fichasError) {
@@ -1404,6 +1437,41 @@ guardarCorteBtn.addEventListener("click", async () => {
 
   guardarCorteBtn.disabled = true;
   corteStatus.textContent = "Guardando corte...";
+
+  const {
+    data: cortesSolapados,
+    error: solapamientoError
+  } = await supabaseClient
+    .from("cortes_turno")
+    .select("id, inicio, fin")
+    .eq("employee", ultimoCorteGenerado.employee)
+    .lt("inicio", ultimoCorteGenerado.fin)
+    .gt("fin", ultimoCorteGenerado.inicio)
+    .limit(1);
+  
+  if (solapamientoError) {
+    console.error(
+      "Error al verificar cortes existentes:",
+      solapamientoError
+    );
+  
+    corteStatus.textContent =
+      "❌ No se pudo verificar si el horario ya pertenece a otro corte.";
+  
+    guardarCorteBtn.disabled = false;
+    return;
+  }
+  
+  if (cortesSolapados && cortesSolapados.length > 0) {
+    const corteExistente = cortesSolapados[0];
+  
+    corteStatus.textContent =
+      `❌ Este periodo se cruza con el corte #${corteExistente.id}. ` +
+      "Modifica la hora inicial o final para no contar movimientos dos veces.";
+  
+    guardarCorteBtn.disabled = false;
+    return;
+  }
 
   const { data, error } = await supabaseClient
     .from("cortes_turno")
@@ -1794,6 +1862,26 @@ if (repartoGastosBody) {
   });
 }
 
+async function rollbackRepartoCompleto(repartoId) {
+  // 1. Eliminar gastos relacionados
+  await supabaseClient
+    .from("reparto_gastos")
+    .delete()
+    .eq("reparto_id", repartoId);
+
+  // 2. Eliminar relaciones con cortes
+  await supabaseClient
+    .from("reparto_cortes_detalle")
+    .delete()
+    .eq("reparto_id", repartoId);
+
+  // 3. Finalmente eliminar el reparto principal
+  await supabaseClient
+    .from("repartos_cortes")
+    .delete()
+    .eq("id", repartoId);
+}
+
 if (guardarRepartoBtn) {
   guardarRepartoBtn.addEventListener("click", async () => {
     ensureSupabase();
@@ -1919,21 +2007,17 @@ if (guardarRepartoBtn) {
 
     } catch (err) {
       console.error("Error al guardar reparto:", err);
-
-      // Si algo falló después de crear el reparto,
-      // eliminamos el reparto incompleto.
+    
       if (repartoId) {
-        await supabaseClient
-          .from("repartos_cortes")
-          .delete()
-          .eq("id", repartoId);
+        await rollbackRepartoCompleto(repartoId);
       }
-
+    
       repartoStatus.textContent =
         `❌ Error al guardar reparto: ${err.message || "Error desconocido"}`;
-
+    
       guardarRepartoBtn.disabled = false;
     }
+
   });
 }
 
@@ -2725,6 +2809,29 @@ encargoServiceType.addEventListener("change", toggleEncargoService);
 encargoExpressKilos.addEventListener("input", updateExpressPrice);
 encargoExpressKilos.addEventListener("change", updateExpressPrice);
 
+async function rollbackNuevoEncargo(encargoId) {
+  const referenciaId = String(encargoId);
+
+  // 1. Eliminar movimiento inicial de caja, si existe
+  await supabaseClient
+    .from("movimientos_caja")
+    .delete()
+    .eq("origen", "encargo")
+    .eq("referencia_id", referenciaId);
+
+  // 2. Eliminar artículos del encargo
+  await supabaseClient
+    .from("encargo_articulos")
+    .delete()
+    .eq("encargo_id", encargoId);
+
+  // 3. Finalmente eliminar el encargo
+  await supabaseClient
+    .from("encargos")
+    .delete()
+    .eq("id", encargoId);
+}
+
 async function saveEncargoToSupabase(payload) {
   ensureSupabase();
 
@@ -2797,6 +2904,10 @@ encargoForm.addEventListener("submit", async (e) => {
   const amountPaid = wholeMoney(encargoAmountPaid.value);
   const total = calcEncargoTotal();
 
+  const amountPaidReal = wholeMoney(
+    Math.min(Math.max(amountPaid, 0), total)
+  );
+
   if (!employee) {
     encargoStatus.textContent = "Selecciona el empleado.";
     return;
@@ -2820,6 +2931,15 @@ encargoForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  if (
+    paymentStatus === "pendiente" &&
+    amountPaid >= total
+  ) {
+    encargoStatus.textContent =
+      "El pago ya cubre el total. Selecciona Pagado o Pagado por transferencia.";
+    return;
+  }
+
   const isExpress = encargoServiceType.value === "express";
   const expressPrice = isExpress ? wholeMoney(encargoExpressPrice.value) : 0;
   
@@ -2834,10 +2954,10 @@ encargoForm.addEventListener("submit", async (e) => {
       ? wholeMoney(amountPaid - total)
       : 0;
 
-  const amountDue =
-    paymentStatus === "pendiente"
-      ? wholeMoney(Math.max(total - amountPaid, 0))
-      : 0;
+      const amountDue =
+      paymentStatus === "pendiente"
+        ? wholeMoney(Math.max(total - amountPaidReal, 0))
+        : 0;
 
   const payload = {
     employee,
@@ -2879,7 +2999,7 @@ encargoForm.addEventListener("submit", async (e) => {
 
     total,
     payment_status: paymentStatus,
-    amount_paid: amountPaid,
+    amount_paid: amountPaidReal,
     change: cambio,
     amount_due: amountDue,
 
@@ -2918,15 +3038,8 @@ encargoForm.addEventListener("submit", async (e) => {
     );
   
     if (!articulosRes.ok) {
-      /*
-        Si fallan los artículos, eliminamos el encargo recién creado
-        para evitar que quede guardado de forma incompleta.
-      */
-      await supabaseClient
-        .from("encargos")
-        .delete()
-        .eq("id", res.id);
-  
+      await rollbackNuevoEncargo(res.id);
+    
       throw new Error(
         articulosRes.error ||
         "No se pudieron guardar los artículos del encargo."
@@ -2939,10 +3052,7 @@ encargoForm.addEventListener("submit", async (e) => {
           ? "transferencia"
           : "efectivo";
     
-      const montoRealCobrado =
-        paymentStatus === "pagado"
-          ? Math.min(amountPaid, total)
-          : amountPaid;
+          const montoRealCobrado = amountPaidReal;
     
       const { error: movimientoEncargoError } = await supabaseClient
         .from("movimientos_caja")
@@ -2954,12 +3064,19 @@ encargoForm.addEventListener("submit", async (e) => {
           referencia_id: String(res.id),
         });
     
-      if (movimientoEncargoError) {
-        throw new Error(
-          "El encargo se guardó, pero no se pudo registrar el movimiento de caja: " +
-          movimientoEncargoError.message
-        );
-      }
+        if (movimientoEncargoError) {
+          console.error(
+            "Error al registrar movimiento de caja del encargo:",
+            movimientoEncargoError
+          );
+        
+          await rollbackNuevoEncargo(res.id);
+        
+          throw new Error(
+            "No se pudo registrar el movimiento de caja del encargo: " +
+            movimientoEncargoError.message
+          );
+        }
     }
   
     encargoStatus.textContent =
@@ -3171,7 +3288,10 @@ function updateDetailPaymentSummary() {
   let falta = 0;
 
   if (nuevoPagado >= total) {
-    cambio = nuevoPagado - total;
+    cambio =
+      detailAbonoMetodo?.value === "efectivo"
+        ? nuevoPagado - total
+        : 0;
   } else {
     falta = total - nuevoPagado;
   }
@@ -3215,14 +3335,16 @@ function formatDateTime(dateString) {
 function paymentLabel(row) {
   const total = Number(row.total || 0);
   const paid = Number(row.amount_paid || 0);
+  const cambio = Number(row.change || 0);
 
   if (paid >= total) {
-    const cambio = paid - total;
-    return cambio > 0 ? `Cambio ${money(cambio)}` : "Pagado exacto";
-  } else {
-    const falta = total - paid;
-    return `Falta ${money(falta)}`;
+    return cambio > 0
+      ? `Cambio ${money(cambio)}`
+      : "Pagado exacto";
   }
+
+  const falta = Math.max(total - paid, 0);
+  return `Falta ${money(falta)}`;
 }
 
 async function loadEncargosList() {
@@ -3385,7 +3507,8 @@ async function openEncargoDetail(id) {
 
 [
   detailPaymentStatus,
-  detailAbonoHoy
+  detailAbonoHoy,
+  detailAbonoMetodo
 ].forEach((el) => {
   if (!el) return;
   el.addEventListener("input", updateDetailPaymentSummary);
@@ -3448,7 +3571,7 @@ async function guardarFichasEncargo() {
   function agregarFichaEncargo(concepto, cantidad) {
     const qty = Number(cantidad || 0);
 
-    if (qty > 0) {
+    if (qty !== 0) {
       fichasEncargoRows.push({
         employee: detailUsoEmployee.value,
         origen: "encargo",
@@ -3522,14 +3645,51 @@ async function guardarFichasEncargo() {
       .from("movimientos_fichas")
       .insert(fichasEncargoRows);
 
-    if (fichasError) {
-      console.error(fichasError);
-      encargoDetailStatus.textContent =
-        "⚠️ El uso se guardó, pero no se pudieron registrar las fichas del corte.";
-
-      guardarFichasEncargoBtn.disabled = false;
-      return;
-    }
+      if (fichasError) {
+        console.error(fichasError);
+      
+        const { error: restaurarUsoError } =
+          await supabaseClient
+            .from("encargos")
+            .update({
+              used_lavadora_16: usoAnteriorEncargo.lav16,
+              used_lavadora_9: usoAnteriorEncargo.lav9,
+              used_lavadora_4: usoAnteriorEncargo.lav4,
+      
+              used_secadora_15: usoAnteriorEncargo.sec15,
+              used_secadora_30: usoAnteriorEncargo.sec30,
+      
+              used_jabon: usoAnteriorEncargo.jabon,
+              used_suavizante: usoAnteriorEncargo.suavizante,
+              used_desmugrante: usoAnteriorEncargo.desmugrante,
+      
+              used_bolsa_chica: usoAnteriorEncargo.bolsaChica,
+              used_bolsa_mediana: usoAnteriorEncargo.bolsaMediana,
+              used_bolsa_grande: usoAnteriorEncargo.bolsaGrande,
+            })
+            .eq("id", currentEncargoId);
+      
+        guardarFichasEncargoBtn.disabled = false;
+      
+        if (restaurarUsoError) {
+          console.error(
+            "Error al restaurar las fichas del encargo:",
+            restaurarUsoError
+          );
+      
+          encargoDetailStatus.textContent =
+            "❌ Error grave: no se registraron las fichas y tampoco se pudo restaurar el uso del encargo.";
+      
+          return;
+        }
+      
+        encargoDetailStatus.textContent =
+          "❌ No se pudieron registrar las fichas. El uso del encargo fue restaurado.";
+      
+        await openEncargoDetail(currentEncargoId);
+      
+        return;
+      }
   }
 
   usoAnteriorEncargo = {
@@ -3578,8 +3738,38 @@ async function guardarPagoEntregaEncargo() {
   const pagadoAnterior = Number(currentEncargoPaid || 0);
   const total = Number(currentEncargoTotal || 0);
 
+  const { data: encargoAntes, error: encargoAntesError } =
+  await supabaseClient
+    .from("encargos")
+    .select(`
+      payment_status,
+      amount_paid,
+      change,
+      amount_due,
+      delivered_status,
+      delivered_at
+    `)
+    .eq("id", currentEncargoId)
+    .single();
+
+if (encargoAntesError) {
+  console.error(
+    "Error al leer el estado anterior del encargo:",
+    encargoAntesError
+  );
+
+  encargoDetailStatus.textContent =
+    "❌ No se pudo verificar el encargo antes de guardar.";
+
+  return;
+}
+
   const amountPaid = wholeMoney(
     pagadoAnterior + abonoHoy
+  );
+
+  const amountPaidReal = wholeMoney(
+    Math.min(Math.max(amountPaid, 0), total)
   );
 
   const deliveredStatus =
@@ -3596,6 +3786,15 @@ async function guardarPagoEntregaEncargo() {
   }
 
   if (
+    pagadoAnterior >= total &&
+    abonoHoy > 0
+  ) {
+    encargoDetailStatus.textContent =
+      "Este encargo ya está totalmente pagado. No se puede registrar otro abono.";
+    return;
+  }
+
+  if (
     (paymentStatus === "pagado" ||
       paymentStatus === "transferencia") &&
     amountPaid < total
@@ -3605,26 +3804,40 @@ async function guardarPagoEntregaEncargo() {
     return;
   }
 
+  if (
+    paymentStatus === "pendiente" &&
+    amountPaidReal >= total
+  ) {
+    encargoDetailStatus.textContent =
+      "El pago ya cubre el total. Selecciona Pagado o Pagado por transferencia.";
+    return;
+  }
+
   const updatePayload = {
     payment_status: paymentStatus,
-    amount_paid: amountPaid,
+    amount_paid: amountPaidReal,
 
     change:
-      paymentStatus === "pagado"
-        ? wholeMoney(Math.max(amountPaid - total, 0))
-        : 0,
+  abonoHoy > 0
+    ? (
+        paymentStatus === "pagado" &&
+        abonoMetodo === "efectivo"
+          ? wholeMoney(Math.max(amountPaid - total, 0))
+          : 0
+      )
+    : Number(encargoAntes.change || 0),
 
-    amount_due:
-      paymentStatus === "pendiente"
-        ? wholeMoney(Math.max(total - amountPaid, 0))
-        : 0,
+        amount_due:
+        paymentStatus === "pendiente"
+          ? wholeMoney(Math.max(total - amountPaidReal, 0))
+          : 0,
 
     delivered_status: deliveredStatus,
 
     delivered_at:
-      deliveredStatus === "entregado"
-        ? fechaMovimiento
-        : null,
+  deliveredStatus === "entregado"
+    ? (encargoAntes.delivered_at || fechaMovimiento)
+    : null,
   };
 
   encargoDetailStatus.textContent =
@@ -3680,10 +3893,38 @@ async function guardarPagoEntregaEncargo() {
               movimientoAbonoError
             );
           
-            encargoDetailStatus.textContent =
-              `❌ Error al registrar el abono en caja: ${movimientoAbonoError.message || "Error desconocido"}`;
+            const { error: restaurarError } =
+              await supabaseClient
+                .from("encargos")
+                .update({
+                  payment_status: encargoAntes.payment_status,
+                  amount_paid: encargoAntes.amount_paid,
+                  change: encargoAntes.change,
+                  amount_due: encargoAntes.amount_due,
+                  delivered_status: encargoAntes.delivered_status,
+                  delivered_at: encargoAntes.delivered_at,
+                })
+                .eq("id", currentEncargoId);
           
             guardarPagoEntregaBtn.disabled = false;
+          
+            if (restaurarError) {
+              console.error(
+                "Error al restaurar el encargo:",
+                restaurarError
+              );
+          
+              encargoDetailStatus.textContent =
+                "❌ Error grave: no se pudo registrar el abono ni restaurar el encargo.";
+          
+              return;
+            }
+          
+            encargoDetailStatus.textContent =
+              "❌ No se pudo registrar el abono. El encargo fue restaurado y no se guardó el pago.";
+          
+            await openEncargoDetail(currentEncargoId);
+          
             return;
           }
     }
@@ -3739,6 +3980,8 @@ async function saveEncargoUsageAndDelivery() {
     return;
   }
 
+
+
   const updatePayload = {
     used_lavadora_16: Number(useLav16.value || 0),
     used_lavadora_9: Number(useLav9.value || 0),
@@ -3792,7 +4035,7 @@ async function saveEncargoUsageAndDelivery() {
 function agregarFichaEncargo(concepto, cantidad) {
   const qty = Number(cantidad || 0);
 
-  if (qty > 0) {
+  if (qty !== 0) {
     fichasEncargoRows.push({
       employee: detailUsoEmployee.value,
       origen: "encargo",
@@ -3921,17 +4164,46 @@ usoAnteriorEncargo = {
           referencia_id: String(currentEncargoId),
         });
   
-      if (movimientoAbonoError) {
-        console.error(
-          "Error al registrar abono en caja:",
-          movimientoAbonoError
-        );
-  
-        encargoDetailStatus.textContent =
-          "⚠️ El encargo se actualizó, pero no se pudo registrar el abono en el corte de caja.";
-  
-        return;
-      }
+        if (movimientoAbonoError) {
+          console.error(
+            "Error al registrar abono en caja:",
+            movimientoAbonoError
+          );
+        
+          const { error: restaurarError } =
+            await supabaseClient
+              .from("encargos")
+              .update({
+                payment_status: encargoAntes.payment_status,
+                amount_paid: encargoAntes.amount_paid,
+                change: encargoAntes.change,
+                amount_due: encargoAntes.amount_due,
+                delivered_status: encargoAntes.delivered_status,
+                delivered_at: encargoAntes.delivered_at,
+              })
+              .eq("id", currentEncargoId);
+        
+          guardarPagoEntregaBtn.disabled = false;
+        
+          if (restaurarError) {
+            console.error(
+              "Error al restaurar el encargo:",
+              restaurarError
+            );
+        
+            encargoDetailStatus.textContent =
+              "❌ Error grave: no se pudo registrar el abono ni restaurar el encargo.";
+        
+            return;
+          }
+        
+          encargoDetailStatus.textContent =
+            "❌ No se pudo registrar el abono. El encargo fue restaurado y no se guardó el pago.";
+        
+          await openEncargoDetail(currentEncargoId);
+        
+          return;
+        }
     }
   }
 
@@ -3960,7 +4232,16 @@ function mostrarVistaEncargos(tipo) {
 
     if (buscadorEncargosPago) {
       buscadorEncargosPago.style.display =
-        tipo === "pago" ? "block" : "none";
+        tipo === "pago" || tipo === "fichas"
+          ? "block"
+          : "none";
+    }
+    
+    if (encargosListBlock) {
+      encargosListBlock.style.display =
+        tipo === "pago" || tipo === "fichas"
+          ? "none"
+          : "";
     }
 
   // Dentro del detalle del encargo
@@ -4086,10 +4367,6 @@ if (guardarFichasEncargoBtn) {
     "click",
     guardarFichasEncargo
   );
-}
-
-if (saveEncargoUsageBtn) {
-  saveEncargoUsageBtn.addEventListener("click", saveEncargoUsageAndDelivery);
 }
 
 // =====================
@@ -4245,7 +4522,7 @@ function buildEncargoUsageRows(row) {
   ];
 
   return usages
-    .filter(([, qty]) => Number(qty || 0) > 0)
+    .filter(([, qty]) => Number(qty || 0) !== 0)
     .map(([name, qty]) => ({ name, qty: Number(qty || 0) }));
 }
 
@@ -4263,10 +4540,10 @@ async function loadEncargosAnteriores() {
   // Tomamos como referencia la fecha seleccionada.
   // Si no hay fecha, usamos hoy.
   const fechaReferencia =
-    viewEncargoFromDate?.value ||
-    new Date().toLocaleDateString("en-CA");
+  viewEncargoFromDate?.value ||
+  new Date().toLocaleDateString("en-CA");
 
-  const inicioDia = localDateStartISO(fechaReferencia);
+const inicioDia = localDateStartISO(fechaReferencia);
 
   let query = supabaseClient
     .from("encargos")
@@ -4387,6 +4664,27 @@ async function loadEncargosAnteriores() {
       }
     });
   });
+}
+
+async function abrirEncargoEnPago(encargoId) {
+  const tabEncargos = document.querySelector(
+    '.tabBtn[data-tab="encargosTab"]'
+  );
+
+  if (tabEncargos) {
+    tabEncargos.click();
+  }
+
+  mostrarVistaEncargos("pago");
+
+  await openEncargoDetail(encargoId);
+
+  encargoDetailPanel.style.display = "block";
+  encargoDetailPanel.open = true;
+
+  if (encargosListBlock) {
+    encargosListBlock.open = false;
+  }
 }
 
 async function loadEncargosPago() {
@@ -4510,29 +4808,44 @@ async function loadEncargosPagadosHoy() {
   encargosPagadosHoyBody.innerHTML = "";
   encargosPagadosHoyStatus.textContent = "Cargando pagos de hoy...";
 
-  // Fecha de hoy en horario local
-  const fechaReferencia =
+  const fechaDesde =
   viewEncargoFromDate?.value ||
   new Date().toLocaleDateString("en-CA");
 
-  const inicioHoy = localDateStartISO(fechaReferencia);
-  const finHoy = localDateEndISO(fechaReferencia);
+const fechaHasta =
+  viewEncargoToDate?.value ||
+  fechaDesde;
+
+const inicioHoy = localDateStartISO(fechaDesde);
+const finHoy = localDateEndISO(fechaHasta);
 
   // 1. Buscar movimientos de dinero de encargos realizados hoy
-  const {
-    data: movimientos,
-    error: movimientosError
-  } = await supabaseClient
-    .from("movimientos_caja")
-    .select(`
-      referencia_id,
-      monto,
-      metodo_pago,
-      created_at
-    `)
-    .in("origen", ["encargo", "abono_encargo"])
-    .gte("created_at", inicioHoy)
-    .lte("created_at", finHoy);
+  let movimientosQuery = supabaseClient
+  .from("movimientos_caja")
+  .select(`
+    referencia_id,
+    monto,
+    metodo_pago,
+    created_at
+  `)
+  .in("origen", ["encargo", "abono_encargo"])
+  .gte("created_at", inicioHoy)
+  .lte("created_at", finHoy);
+
+if (
+  viewEncargoEmployeeFilter &&
+  viewEncargoEmployeeFilter.value
+) {
+  movimientosQuery = movimientosQuery.eq(
+    "employee",
+    viewEncargoEmployeeFilter.value
+  );
+}
+
+const {
+  data: movimientos,
+  error: movimientosError
+} = await movimientosQuery;
 
   if (movimientosError) {
     console.error(movimientosError);
@@ -4592,8 +4905,18 @@ async function loadEncargosPagadosHoy() {
   }
 
   // 4. Dejar solamente encargos creados ANTES de hoy
+  const fechaLocalClave = (fecha) =>
+    new Date(fecha).toLocaleDateString("en-CA", {
+      timeZone: "America/Mexico_City"
+    });
+  
   const encargosAnteriores = (encargos || []).filter((encargo) => {
-    return new Date(encargo.created_at) < new Date(inicioHoy);
+    const fechaEncargo = fechaLocalClave(encargo.created_at);
+  
+    return movimientos.some((mov) =>
+      String(mov.referencia_id) === String(encargo.id) &&
+      fechaLocalClave(mov.created_at) > fechaEncargo
+    );
   });
 
   if (encargosAnteriores.length === 0) {
@@ -4604,14 +4927,18 @@ async function loadEncargosPagadosHoy() {
 
   // 5. Mostrar cada encargo
   encargosAnteriores.forEach((encargo) => {
-    const movimientosEncargo = movimientos.filter(
-      (mov) => String(mov.referencia_id) === String(encargo.id)
-    );
+    const fechaEncargo = fechaLocalClave(encargo.created_at);
 
-    const pagadoHoy = movimientosEncargo.reduce(
-      (sum, mov) => sum + Number(mov.monto || 0),
-      0
-    );
+const movimientosEncargo = movimientos.filter(
+  (mov) =>
+    String(mov.referencia_id) === String(encargo.id) &&
+    fechaLocalClave(mov.created_at) > fechaEncargo
+);
+
+const pagadoHoy = movimientosEncargo.reduce(
+  (sum, mov) => sum + Number(mov.monto || 0),
+  0
+);
 
     const total = Number(encargo.total || 0);
     const totalPagado = Number(encargo.amount_paid || 0);
@@ -4633,12 +4960,13 @@ async function loadEncargosPagadosHoy() {
       <td>${encargo.payment_status || ""}</td>
       <td>
         <button
-          type="button"
-          class="btn abrir-encargo-pagado-hoy"
-          data-id="${encargo.id}"
-        >
-          Abrir
-        </button>
+  type="button"
+  class="addBtn abrir-encargo-pago"
+  data-id="${encargo.id}"
+  style="width:auto; padding:8px 10px;"
+>
+  Abrir
+</button>
       </td>
     `;
 
@@ -4649,27 +4977,10 @@ async function loadEncargosPagadosHoy() {
     `${encargosAnteriores.length} encargo(s) anterior(es) con pago hoy.`;
 
     encargosPagadosHoyBody
-  .querySelectorAll(".abrir-encargo-pagado-hoy")
-  .forEach((boton) => {
-    boton.addEventListener("click", async () => {
-      const tabEncargos = document.querySelector(
-        '.tabBtn[data-tab="encargosTab"]'
-      );
-
-      if (tabEncargos) {
-        tabEncargos.click();
-      }
-
-      mostrarVistaEncargos("pago");
-
-      await openEncargoDetail(boton.dataset.id);
-
-      encargoDetailPanel.style.display = "block";
-      encargoDetailPanel.open = true;
-
-      if (encargosListBlock) {
-        encargosListBlock.open = false;
-      }
+  .querySelectorAll(".abrir-encargo-pago")
+  .forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await abrirEncargoEnPago(btn.dataset.id);
     });
   });
 }
@@ -4719,8 +5030,8 @@ async function loadViewEncargos() {
   }
 
   if (!data || data.length === 0) {
-    viewEncargosStatus.textContent = "No hay encargos con esos filtros.";
-    return;
+    viewEncargosStatus.textContent =
+      "No hubo encargos nuevos en este periodo. Revisando cobros...";
   }
 
   let movimientosCajaQuery = supabaseClient
@@ -4748,14 +5059,6 @@ async function loadViewEncargos() {
       viewEncargoEmployeeFilter.value
     );
   }
-
-
-if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
-  movimientosCajaQuery = movimientosCajaQuery.eq(
-    "employee",
-    viewEncargoEmployeeFilter.value
-  );
-}
 
 const {
   data: movimientosCajaData,
@@ -4866,24 +5169,12 @@ const empleadoSeleccionado =
     ? viewEncargoEmployeeFilter.value
     : "";
 
-const idsEncargosEmpleado = new Set(
-  (movimientosCajaData || [])
-    .map((movimiento) => String(movimiento.referencia_id || ""))
-    .filter(Boolean)
-);
-
-const dataFiltrada = empleadoSeleccionado
-  ? (data || []).filter((row) =>
-      String(row.employee || "") === empleadoSeleccionado ||
-      idsEncargosEmpleado.has(String(row.id))
-    )
-  : (data || []);
-
-  if (!dataFiltrada || dataFiltrada.length === 0) {
-    viewEncargosStatus.textContent =
-      "No hay encargos con esos filtros.";
-    return;
-  }
+    const dataFiltrada = empleadoSeleccionado
+    ? (data || []).filter(
+        (row) =>
+          String(row.employee || "") === empleadoSeleccionado
+      )
+    : (data || []);
 
   const totalEncargos = dataFiltrada.length;
 
@@ -4921,15 +5212,7 @@ const dataFiltrada = empleadoSeleccionado
     totalCambio += cambio;
   }
 
-  if (viewEncargoEmployeeFilter && viewEncargoEmployeeFilter.value) {
-    totalCobrado = totalCobradoEmpleado;
-  } else {
-    totalCobrado = dataFiltrada.reduce(
-      (suma, row) =>
-        suma + Number(row.amount_paid || 0),
-      0
-    );
-  }
+  totalCobrado = totalCobradoEmpleado;
 
   viewEncargosSummaryCount.textContent = totalEncargos;
 viewEncargosSummaryTotal.textContent = money(totalVendido);
@@ -5014,7 +5297,7 @@ viewEncargosSummary.style.display = "block";
     );
   
     const porCobrar = Math.max(total - pagado, 0);
-    const cambio = Math.max(pagado - total, 0);
+    const cambio = Number(row.change || 0);
 
     const cobradoPorEmpleadoSeleccionado = empleadoSeleccionado
   ? (movimientosCajaData || [])
@@ -5151,6 +5434,7 @@ function createEmptyUsageMap() {
     "Pinol": 0,
     "Cloro": 0,
     "Jabón en polvo": 0,
+    "Otro": 0,
   };
 }
 
@@ -5176,7 +5460,7 @@ function renderUsageTable(target, usageMap) {
   
   const entries = Object.entries(usageMap).filter(
     ([name, qty]) =>
-      Number(qty || 0) > 0 &&
+      Number(qty || 0) !== 0 &&
       !conceptosOcultos.includes(name)
   );
 
@@ -5757,7 +6041,7 @@ if (articulosError) {
 
   const total = Number(data.total || 0);
   const pagado = Number(data.amount_paid || 0);
-  const cambio = Math.max(pagado - total, 0);
+  const cambio = Number(data.change || 0);
   const resta = Math.max(total - pagado, 0);
 
   const estadoPagoTicket =
@@ -5970,6 +6254,7 @@ if (articulosError) {
 
   win.document.close();
 }
+
 
 
 
