@@ -1687,52 +1687,6 @@
             </div>
           </details>
 
-          <details
-          id="buscadorEncargosPago"
-          class="block"
-          style="margin-top:12px; display:none;"
-        >
-          <summary>Buscar encargo anterior</summary>
-        
-          <div style="margin-top:12px;">
-            <div class="grid">
-              <div class="field">
-                <label for="buscarEncargoPago">
-                  Buscar cliente o teléfono
-                </label>
-        
-                <input
-                  id="buscarEncargoPago"
-                  type="text"
-                  placeholder="Nombre o teléfono"
-                />
-              </div>
-            </div>
-        
-            <div class="tableWrap" style="margin-top:12px;">
-              <table
-                class="table"
-                aria-label="Encargos anteriores para pago"
-              >
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Cliente</th>
-                    <th>Teléfono</th>
-                    <th>Total</th>
-                    <th>Pagado</th>
-                    <th>Por cobrar</th>
-                    <th>Estado</th>
-                    <th></th>
-                  </tr>
-                </thead>
-        
-                <tbody id="encargosPagoBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </details>
-
             <details class="block" id="encargoDetailPanel" style="display:none;">
               <summary>Detalle del encargo</summary>
             
@@ -1848,6 +1802,7 @@
                     <label for="detailPaymentStatus">Estado de pago</label>
                     <select id="detailPaymentStatus">
                       <option value="pagado">Pagado</option>
+                      <option value="transferencia">Pagado por transferencia</option>
                       <option value="pendiente">Pendiente / Adelanto</option>
                     </select>
                   </div>
