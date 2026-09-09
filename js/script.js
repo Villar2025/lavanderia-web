@@ -71,6 +71,51 @@ function money(n) {
   return `$${val.toLocaleString("es-MX")}`;
 }
 
+function nombreCortoTicket(nombre) {
+  const nombresCortos = {
+    "Lavadora 16 kg": "Lav. 16 kg",
+    "Lavadora 9 kg": "Lav. 9 kg",
+    "Lavadora 4 kg": "Lav. 4 kg",
+
+    "Secadora 9 kg (15 min)": "Sec. 15 min",
+    "Secadora 9 kg (30 min)": "Sec. 30 min",
+
+    "Solo secado 9 kg (15 min)": "Solo sec. 15 min",
+    "Solo secado 9 kg (30 min)": "Solo sec. 30 min",
+
+    "1 medida de jabón": "Jabón",
+    "1 medida de suavizante": "Suavizante",
+    "1 medida de desmugrante": "Desmugrante",
+
+    "Jabón en polvo": "Jabón polvo",
+
+    "Bolsa chica": "Bolsa ch.",
+    "Bolsa mediana": "Bolsa med.",
+    "Bolsa grande": "Bolsa gde.",
+
+    "Servicio Express": "Serv. Express",
+
+    "Edredón Individual": "Edredón Ind.",
+    "Edredón Matrimonial": "Edredón Mat.",
+    "Edredón King": "Edredón King",
+
+    "Colcha Individual": "Colcha Ind.",
+    "Colcha Matrimonial": "Colcha Mat.",
+    "Colcha King": "Colcha King",
+
+    "Manteles": "Manteles"
+  };
+
+  return nombresCortos[nombre] || nombre;
+}
+
+function folioCortoTicket(id) {
+  return String(id || "")
+    .replace(/-/g, "")
+    .slice(0, 8)
+    .toUpperCase();
+}
+
 function localDateStartISO(dateStr) {
   if (!dateStr) return "";
   return new Date(`${dateStr}T00:00:00`).toISOString();
@@ -1018,14 +1063,57 @@ let ultimoCorteImprimible = null;
 let corteDetalleImprimible = null;
 
 function mapaFichasATexto(mapa = {}) {
-  const entradas = Object.entries(mapa);
+  const orden = [
+    "Lavadora 16 kg",
+    "Lavadora 9 kg",
+    "Lavadora 4 kg",
+
+    "Secadora 9 kg (15 min)",
+    "Secadora 9 kg (30 min)",
+    "Secado (precio libre)",
+
+    "1 medida de jabón",
+    "1 medida de suavizante",
+    "1 medida de desmugrante",
+
+    "Bolsa chica",
+    "Bolsa mediana",
+    "Bolsa grande",
+
+    "Suavizante (botella)",
+    "Pinol",
+    "Cloro",
+    "Jabón en polvo",
+    "Otro"
+  ];
+
+  const entradas = Object.entries(mapa)
+    .filter(
+      ([, cantidad]) =>
+        Number(cantidad || 0) !== 0
+    )
+    .sort(([conceptoA], [conceptoB]) => {
+      const indiceA = orden.indexOf(conceptoA);
+      const indiceB = orden.indexOf(conceptoB);
+
+      const posicionA =
+        indiceA === -1 ? 999 : indiceA;
+
+      const posicionB =
+        indiceB === -1 ? 999 : indiceB;
+
+      return posicionA - posicionB;
+    });
 
   if (entradas.length === 0) {
     return "Sin fichas";
   }
 
   return entradas
-    .map(([concepto, cantidad]) => `${concepto}: ${cantidad}`)
+    .map(
+      ([concepto, cantidad]) =>
+        `${nombreCortoTicket(concepto)}: ${cantidad}`
+    )
     .join("\n");
 }
 
@@ -4754,7 +4842,70 @@ async function loadEncargosPago() {
     return;
   }
 
+  const idsResultados = resultados.map(
+    (encargo) => String(encargo.id)
+  );
+  
+  const { data: fechasFichas, error: fechasFichasError } =
+    await supabaseClient
+      .from("movimientos_fichas")
+      .select(`
+        referencia_id,
+        created_at
+      `)
+      .eq("origen", "encargo")
+      .in("referencia_id", idsResultados)
+      .order("created_at", { ascending: true });
+  
+  if (fechasFichasError) {
+    console.error(
+      "Error consultando fechas de fichas:",
+      fechasFichasError
+    );
+  }
+  
+  const { data: fechasPagos, error: fechasPagosError } =
+    await supabaseClient
+      .from("movimientos_caja")
+      .select(`
+        referencia_id,
+        created_at
+      `)
+      .in("origen", ["encargo", "abono_encargo"])
+      .in("referencia_id", idsResultados)
+      .order("created_at", { ascending: true });
+  
+  if (fechasPagosError) {
+    console.error(
+      "Error consultando fechas de pagos:",
+      fechasPagosError
+    );
+  }
+
   resultados.forEach((encargo) => {
+
+    const fichasDelEncargo = (fechasFichas || []).filter(
+      (movimiento) =>
+        String(movimiento.referencia_id || "") === String(encargo.id)
+    );
+    
+    const pagosDelEncargo = (fechasPagos || []).filter(
+      (movimiento) =>
+        String(movimiento.referencia_id || "") === String(encargo.id)
+    );
+    
+    const fechaFichas =
+      fichasDelEncargo.length > 0
+        ? formatDateTime(fichasDelEncargo[0].created_at)
+        : "Sin registrar";
+    
+    const fechaUltimoPago =
+      pagosDelEncargo.length > 0
+        ? formatDateTime(
+            pagosDelEncargo[pagosDelEncargo.length - 1].created_at
+          )
+        : "Sin registrar";
+
     const total = Number(encargo.total || 0);
     const pagado = Number(encargo.amount_paid || 0);
     const porCobrar = Math.max(total - pagado, 0);
@@ -4765,23 +4916,36 @@ async function loadEncargosPago() {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${fecha}</td>
-      <td>${encargo.client_name || ""}</td>
-      <td>${encargo.client_phone || ""}</td>
-      <td>${money(total)}</td>
-      <td>${money(pagado)}</td>
-      <td>${money(porCobrar)}</td>
-      <td>${encargo.payment_status || ""}</td>
-      <td>
-        <button
-          type="button"
-          class="btn abrir-encargo-pago"
-          data-id="${encargo.id}"
-        >
-          Abrir
-        </button>
-      </td>
-    `;
+  <td>${fecha}</td>
+  <td>${fechaFichas}</td>
+  <td>${fechaUltimoPago}</td>
+  <td>${encargo.client_name || ""}</td>
+  <td>${encargo.client_phone || ""}</td>
+  <td>${money(total)}</td>
+  <td>${money(pagado)}</td>
+  <td>${money(porCobrar)}</td>
+  <td>${encargo.payment_status || ""}</td>
+
+  <td>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button
+        type="button"
+        class="btn abrir-encargo-pago"
+        data-id="${encargo.id}"
+      >
+        Abrir
+      </button>
+
+      <button
+        type="button"
+        class="btn imprimir-encargo-pago"
+        data-id="${encargo.id}"
+      >
+        Imprimir ticket
+      </button>
+    </div>
+  </td>
+`;
 
     encargosPagoBody.appendChild(tr);
   });
@@ -4800,6 +4964,14 @@ async function loadEncargosPago() {
         }
       });
     });
+
+    encargosPagoBody
+  .querySelectorAll(".imprimir-encargo-pago")
+  .forEach((boton) => {
+    boton.addEventListener("click", async () => {
+      await printEncargoTicket(boton.dataset.id);
+    });
+  });
 }
 
 async function loadEncargosPagadosHoy() {
@@ -4940,6 +5112,52 @@ const pagadoHoy = movimientosEncargo.reduce(
   0
 );
 
+const pagadoHoyEfectivo = movimientosEncargo
+  .filter(
+    (mov) =>
+      mov.metodo_pago === "efectivo"
+  )
+  .reduce(
+    (sum, mov) =>
+      sum + Number(mov.monto || 0),
+    0
+  );
+
+const pagadoHoyTransferencia = movimientosEncargo
+  .filter(
+    (mov) =>
+      mov.metodo_pago === "transferencia"
+  )
+  .reduce(
+    (sum, mov) =>
+      sum + Number(mov.monto || 0),
+    0
+  );
+
+let pagadoHoyDetalleHtml = money(pagadoHoy);
+
+if (
+  pagadoHoyEfectivo > 0 &&
+  pagadoHoyTransferencia > 0
+) {
+  pagadoHoyDetalleHtml = `
+    <span>${money(pagadoHoyEfectivo)} efectivo</span>
+    <br>
+    <span style="color:var(--danger); font-weight:700;">
+      ${money(pagadoHoyTransferencia)} transferencia
+    </span>
+  `;
+} else if (pagadoHoyTransferencia > 0) {
+  pagadoHoyDetalleHtml = `
+    <span style="color:var(--danger); font-weight:700;">
+      ${money(pagadoHoyTransferencia)} transferencia
+    </span>
+  `;
+} else if (pagadoHoyEfectivo > 0) {
+  pagadoHoyDetalleHtml =
+    `${money(pagadoHoyEfectivo)} efectivo`;
+}
+
     const total = Number(encargo.total || 0);
     const totalPagado = Number(encargo.amount_paid || 0);
     const porCobrar = Math.max(0, total - totalPagado);
@@ -4954,7 +5172,7 @@ const pagadoHoy = movimientosEncargo.reduce(
       <td>${encargo.client_name || ""}</td>
       <td>${encargo.client_phone || ""}</td>
       <td>${money(total)}</td>
-      <td><strong>${money(pagadoHoy)}</strong></td>
+      <td>${pagadoHoyDetalleHtml}</td>
       <td>${money(totalPagado)}</td>
       <td>${money(porCobrar)}</td>
       <td>${encargo.payment_status || ""}</td>
@@ -5275,6 +5493,64 @@ viewEncargosSummary.style.display = "block";
 
   await loadEncargosPagadosHoy();
 
+  const idsEncargosVisibles = dataFiltrada.map(
+    (row) => String(row.id)
+  );
+  
+  let movimientosPagoVisibles = [];
+  
+  if (idsEncargosVisibles.length > 0) {
+    const {
+      data: pagosVisibles,
+      error: pagosVisiblesError
+    } = await supabaseClient
+      .from("movimientos_caja")
+      .select(`
+        referencia_id,
+        monto,
+        metodo_pago,
+        created_at
+      `)
+      .in("origen", ["encargo", "abono_encargo"])
+      .in("referencia_id", idsEncargosVisibles);
+  
+    if (pagosVisiblesError) {
+      console.error(
+        "Error al consultar métodos de pago:",
+        pagosVisiblesError
+      );
+    } else {
+      movimientosPagoVisibles = pagosVisibles || [];
+    }
+  }
+
+  let movimientosFichasVisibles = [];
+
+if (idsEncargosVisibles.length > 0) {
+  const {
+    data: fichasVisibles,
+    error: fichasVisiblesError
+  } = await supabaseClient
+    .from("movimientos_fichas")
+    .select(`
+      referencia_id,
+      created_at,
+      cantidad
+    `)
+    .eq("origen", "encargo")
+    .in("referencia_id", idsEncargosVisibles)
+    .order("created_at", { ascending: true });
+
+  if (fichasVisiblesError) {
+    console.error(
+      "Error al consultar fechas de fichas:",
+      fichasVisiblesError
+    );
+  } else {
+    movimientosFichasVisibles = fichasVisibles || [];
+  }
+}
+
   for (const row of dataFiltrada) {
     const total = Number(row.total || 0);
   
@@ -5298,6 +5574,79 @@ viewEncargosSummary.style.display = "block";
   
     const porCobrar = Math.max(total - pagado, 0);
     const cambio = Number(row.change || 0);
+
+    const fichasDelEncargo = movimientosFichasVisibles.filter(
+      (movimiento) =>
+        String(movimiento.referencia_id || "") === String(row.id)
+    );
+    
+    const fechaFichas =
+      fichasDelEncargo.length > 0
+        ? formatDateTime(fichasDelEncargo[0].created_at)
+        : "Sin registrar";
+
+        const pagosDelEncargoConFecha = movimientosPagoVisibles
+        .filter(
+          (movimiento) =>
+            String(movimiento.referencia_id || "") === String(row.id)
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.created_at) - new Date(a.created_at)
+        );
+      
+      const fechaUltimoPago =
+        pagosDelEncargoConFecha.length > 0
+          ? formatDateTime(pagosDelEncargoConFecha[0].created_at)
+          : "Sin registrar";
+
+    const pagosDelEncargo = movimientosPagoVisibles.filter(
+      (movimiento) =>
+        String(movimiento.referencia_id || "") === String(row.id)
+    );
+    
+    const pagoEfectivo = pagosDelEncargo
+      .filter(
+        (movimiento) =>
+          movimiento.metodo_pago === "efectivo"
+      )
+      .reduce(
+        (suma, movimiento) =>
+          suma + Number(movimiento.monto || 0),
+        0
+      );
+    
+    const pagoTransferencia = pagosDelEncargo
+      .filter(
+        (movimiento) =>
+          movimiento.metodo_pago === "transferencia"
+      )
+      .reduce(
+        (suma, movimiento) =>
+          suma + Number(movimiento.monto || 0),
+        0
+      );
+    
+    let pagoDetalleHtml = money(pagado);
+    
+    if (pagoEfectivo > 0 && pagoTransferencia > 0) {
+      pagoDetalleHtml = `
+        <span>${money(pagoEfectivo)} efectivo</span>
+        <br>
+        <span style="color:var(--danger); font-weight:700;">
+          ${money(pagoTransferencia)} transferencia
+        </span>
+      `;
+    } else if (pagoTransferencia > 0) {
+      pagoDetalleHtml = `
+        <span style="color:var(--danger); font-weight:700;">
+          ${money(pagoTransferencia)} transferencia
+        </span>
+      `;
+    } else if (pagoEfectivo > 0) {
+      pagoDetalleHtml =
+        `${money(pagoEfectivo)} efectivo`;
+    }
 
     const cobradoPorEmpleadoSeleccionado = empleadoSeleccionado
   ? (movimientosCajaData || [])
@@ -5330,7 +5679,7 @@ viewEncargosSummary.style.display = "block";
       <td>${humanDeliveredStatus(row.delivered_status)}</td>
       <td>${humanPaymentStatus(row.payment_status)}</td>
       <td>${money(total)}</td>
-      <td>${money(pagado)}</td>
+      <td>${pagoDetalleHtml}</td>
       <td>${money(porCobrar)}</td>
       <td>${money(cambio)}</td>
       <td style="text-align:right;">
@@ -5789,7 +6138,7 @@ printTicketBtn.addEventListener("click", () => {
     .map(
       (item) => `
         <div class="item">
-          <div class="itemNombre">${item.name}</div>
+          <div class="itemNombre">${nombreCortoTicket(item.name)}</div>
           <div class="itemDatos">
             ${item.qty} x ${money(item.price)}
           </div>
@@ -5934,7 +6283,7 @@ printTicketBtn.addEventListener("click", () => {
         <div class="linea"></div>
 
         <div class="dato folio">
-          <b>Folio:</b> ${lastSaved.id}
+          <b>Folio:</b> ${folioCortoTicket(lastSaved.id)}
         </div>
 
         <div class="dato">
@@ -6105,7 +6454,7 @@ if (articulosError) {
   const serviciosHTML = `
   ${isExpress ? `
     <div style="margin:8px 0;">
-      <div>Servicio Express</div>
+      <div>${nombreCortoTicket("Servicio Express")}</div>
   
       ${Number(data.express_kilos || 0) > 0
         ? `<div>Kilos: ${data.express_kilos} kg ${Number(data.express_kilos || 0) < 4 ? "(mínimo aplicado)" : ""}</div>`
@@ -6122,49 +6471,49 @@ if (articulosError) {
 
     ${Number(data.edredon_individual || 0) > 0 ? `
       <div style="margin:8px 0;">
-        <div>Edredón Individual: ${data.edredon_individual}</div>
+        <div>${nombreCortoTicket("Edredón Individual")}: ${data.edredon_individual}</div>
         <div>${money(data.edredon_individual * 95)}</div>
       </div>
     ` : ""}
 
     ${Number(data.edredon_matrimonial || 0) > 0 ? `
       <div style="margin:8px 0;">
-        <div>Edredón Matrimonial: ${data.edredon_matrimonial}</div>
+      <div>${nombreCortoTicket("Edredón Matrimonial")}: ${data.edredon_matrimonial}</div>
         <div>${money(data.edredon_matrimonial * 100)}</div>
       </div>
     ` : ""}
 
     ${Number(data.edredon_king || 0) > 0 ? `
       <div style="margin:8px 0;">
-        <div>Edredón King: ${data.edredon_king}</div>
+        <div>${nombreCortoTicket("Edredón King")}: ${data.edredon_king}</div>
         <div>${money(data.edredon_king * 110)}</div>
       </div>
     ` : ""}
 
     ${Number(data.colcha_individual || 0) > 0 ? `
       <div style="margin:8px 0;">
-        <div>Colcha Individual: ${data.colcha_individual}</div>
+        <div>${nombreCortoTicket("Colcha Individual")}: ${data.colcha_individual}</div>
         <div>${money(data.colcha_individual * 90)}</div>
       </div>
     ` : ""}
 
     ${Number(data.colcha_matrimonial || 0) > 0 ? `
       <div style="margin:8px 0;">
-        <div>Colcha Matrimonial: ${data.colcha_matrimonial}</div>
+        <div>${nombreCortoTicket("Colcha Matrimonial")}: ${data.colcha_matrimonial}</div>
         <div>${money(data.colcha_matrimonial * 95)}</div>
       </div>
     ` : ""}
 
     ${Number(data.colcha_king || 0) > 0 ? `
       <div style="margin:8px 0;">
-        <div>Colcha King: ${data.colcha_king}</div>
+        <div>${nombreCortoTicket("Colcha King")}: ${data.colcha_king}</div>
         <div>${money(data.colcha_king * 100)}</div>
       </div>
     ` : ""}
 
     ${Number(data.manteles_kilos || 0) > 0 ? `
       <div style="margin:8px 0;">
-        <div>Manteles: ${data.manteles_kilos} kg</div>
+        <div>${nombreCortoTicket("Manteles")}: ${data.manteles_kilos} kg</div>
         <div>${money(data.manteles_subtotal || 0)}</div>
       </div>
     ` : ""}
@@ -6205,7 +6554,7 @@ if (articulosError) {
 
         <div style="border-top:1px dashed #000;margin:5px 0;"></div>
 
-        <div><b>Folio:</b> ${data.id}</div>
+        <div><b>Folio:</b> ${folioCortoTicket(data.id)}</div>
         <div><b>Fecha:</b> ${formatDateTime(data.created_at)}</div>
         <div><b>Empleado:</b> ${data.employee || "-"}</div>
         <div><b>Cliente:</b> ${data.client_name || "-"}</div>
@@ -6254,6 +6603,7 @@ if (articulosError) {
 
   win.document.close();
 }
+
 
 
 
