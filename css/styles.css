@@ -326,6 +326,36 @@ select option {
   display:none;
 }
 
+/* Tabla fija de Pago y entrega / Registro de fichas */
+.tablaEncargosPago {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.tablaEncargosPago th,
+.tablaEncargosPago td {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  font-size: 12px;
+  padding: 8px 6px;
+}
+
+.tablaRegistros {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.tablaRegistros th,
+.tablaRegistros td {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  font-size: 12px;
+  padding: 8px 6px;
+}
 
 
 
