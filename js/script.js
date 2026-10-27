@@ -774,7 +774,7 @@ salesSummary.style.display = "block";
   for (const v of data) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${formatDate(v.sale_date)}</td>
+      <td>${formatDateTime(v.created_at)}</td>
       <td>${v.employee}</td>
       <td>${money(v.total)}</td>
       <td>${money(v.cash)}</td>
@@ -969,8 +969,430 @@ const btnConsultaResumen = $("#btnConsultaResumen");
 const btnGastosReparto = $("#btnGastosReparto");
 const consultaGastosReparto = $("#consultaGastosReparto");
 
+const btnRegistros = $("#btnRegistros");
+const consultaRegistros = $("#consultaRegistros");
+
+const btnRegistrosPendientes = $("#btnRegistrosPendientes");
+const btnRegistrosEntregados = $("#btnRegistrosEntregados");
+
+const registrosPendientes = $("#registrosPendientes");
+const registrosEntregados = $("#registrosEntregados");
+
+const registrosPendientesBody = $("#registrosPendientesBody");
+const registrosPendientesStatus = $("#registrosPendientesStatus");
+
+const registrosEntregadosBody = $("#registrosEntregadosBody");
+const registrosEntregadosStatus = $("#registrosEntregadosStatus");
+
+const registrosPendientesAnteriorBtn =
+  $("#registrosPendientesAnteriorBtn");
+
+const registrosPendientesSiguienteBtn =
+  $("#registrosPendientesSiguienteBtn");
+
+const registrosPendientesPaginaInfo =
+  $("#registrosPendientesPaginaInfo");
+
+const registrosEntregadosAnteriorBtn =
+  $("#registrosEntregadosAnteriorBtn");
+
+const registrosEntregadosSiguienteBtn =
+  $("#registrosEntregadosSiguienteBtn");
+
+const registrosEntregadosPaginaInfo =
+  $("#registrosEntregadosPaginaInfo");
+
+  const registroDetallePanel =
+  $("#registroDetallePanel");
+
+const cerrarRegistroDetalleBtn =
+  $("#cerrarRegistroDetalleBtn");
+
+const registroDetalleFecha =
+  $("#registroDetalleFecha");
+
+const registroDetalleCliente =
+  $("#registroDetalleCliente");
+
+const registroDetalleTelefono =
+  $("#registroDetalleTelefono");
+
+const registroDetalleTotal =
+  $("#registroDetalleTotal");
+
+const registroDetallePagado =
+  $("#registroDetallePagado");
+
+const registroDetallePendiente =
+  $("#registroDetallePendiente");
+
+const registroDetalleFichas =
+  $("#registroDetalleFichas");
+
+const registroDetallePagoEstado =
+  $("#registroDetallePagoEstado");
+
+const registroDetallePedidoEstado =
+  $("#registroDetallePedidoEstado");
+
+const registroDetalleServiciosBody =
+$("#registroDetalleServiciosBody");
+
+const registroDetalleUsoBody =
+$("#registroDetalleUsoBody");
+
+let registrosPendientesPaginaActual = 0;
+let registrosEntregadosPaginaActual = 0;
+  
+const registrosTamanoPagina = 10;
+  
+let registrosPendientesData = [];
+let registrosEntregadosData = [];
+
+function renderRegistrosPendientes() {
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(
+      registrosPendientesData.length / registrosTamanoPagina
+    )
+  );
+
+  if (registrosPendientesPaginaActual >= totalPaginas) {
+    registrosPendientesPaginaActual = totalPaginas - 1;
+  }
+
+  const inicio =
+    registrosPendientesPaginaActual * registrosTamanoPagina;
+
+  const fin =
+    inicio + registrosTamanoPagina;
+
+  const pagina =
+    registrosPendientesData.slice(inicio, fin);
+
+  registrosPendientesBody.innerHTML = "";
+
+  if (!pagina.length) {
+    registrosPendientesBody.innerHTML = `
+      <tr>
+        <td colspan="9">
+          No hay registros pendientes.
+        </td>
+      </tr>
+    `;
+  }
+
+  for (const encargo of pagina) {
+    const total = Number(encargo.total || 0);
+    const pagado = Number(encargo.amount_paid || 0);
+    const porCobrar = Math.max(total - pagado, 0);
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${formatDateTime(encargo.created_at)}</td>
+      <td>${encargo.client_name || ""}</td>
+      <td>${encargo.client_phone || ""}</td>
+      <td>${money(total)}</td>
+      <td>${money(pagado)}</td>
+      <td>${money(porCobrar)}</td>
+      <td>${encargo.tiene_fichas ? "Registradas" : "Sin registrar"}</td>
+      <td>${humanDeliveredStatus(encargo.delivered_status)}</td>
+      <td>
+        <button
+          type="button"
+          class="ghost"
+          data-registro-encargo="${encargo.id}"
+          style="width:auto;"
+        >
+          Ver
+        </button>
+      </td>
+    `;
+
+    registrosPendientesBody.appendChild(tr);
+  }
+
+  registrosPendientesPaginaInfo.textContent =
+    `Página ${registrosPendientesPaginaActual + 1} de ${totalPaginas}`;
+
+  registrosPendientesAnteriorBtn.disabled =
+    registrosPendientesPaginaActual === 0;
+
+  registrosPendientesSiguienteBtn.disabled =
+    registrosPendientesPaginaActual >= totalPaginas - 1;
+}
+
+function renderRegistrosEntregados() {
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(
+      registrosEntregadosData.length / registrosTamanoPagina
+    )
+  );
+
+  if (registrosEntregadosPaginaActual >= totalPaginas) {
+    registrosEntregadosPaginaActual = totalPaginas - 1;
+  }
+
+  const inicio =
+    registrosEntregadosPaginaActual * registrosTamanoPagina;
+
+  const fin =
+    inicio + registrosTamanoPagina;
+
+  const pagina =
+    registrosEntregadosData.slice(inicio, fin);
+
+  registrosEntregadosBody.innerHTML = "";
+
+  if (!pagina.length) {
+    registrosEntregadosBody.innerHTML = `
+      <tr>
+        <td colspan="9">
+          No hay registros entregados.
+        </td>
+      </tr>
+    `;
+  }
+
+  for (const encargo of pagina) {
+    const total = Number(encargo.total || 0);
+    const pagado = Number(encargo.amount_paid || 0);
+    const porCobrar = Math.max(total - pagado, 0);
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${formatDateTime(encargo.created_at)}</td>
+      <td>${encargo.client_name || ""}</td>
+      <td>${encargo.client_phone || ""}</td>
+      <td>${money(total)}</td>
+      <td>${money(pagado)}</td>
+      <td>${money(porCobrar)}</td>
+      <td>${encargo.tiene_fichas ? "Registradas" : "Sin registrar"}</td>
+      <td>${humanDeliveredStatus(encargo.delivered_status)}</td>
+      <td>
+        <button
+          type="button"
+          class="ghost"
+          data-registro-encargo="${encargo.id}"
+          style="width:auto;"
+        >
+          Ver
+        </button>
+      </td>
+    `;
+
+    registrosEntregadosBody.appendChild(tr);
+  }
+
+  registrosEntregadosPaginaInfo.textContent =
+    `Página ${registrosEntregadosPaginaActual + 1} de ${totalPaginas}`;
+
+  registrosEntregadosAnteriorBtn.disabled =
+    registrosEntregadosPaginaActual === 0;
+
+  registrosEntregadosSiguienteBtn.disabled =
+    registrosEntregadosPaginaActual >= totalPaginas - 1;
+}
+
+async function cargarRegistrosEncargos() {
+  ensureSupabase();
+
+  registrosPendientesStatus.textContent = "Cargando...";
+  registrosEntregadosStatus.textContent = "Cargando...";
+
+  const { data: encargos, error: encargosError } =
+    await supabaseClient
+      .from("encargos")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+  if (encargosError) {
+    console.error("Error cargando registros:", encargosError);
+
+    registrosPendientesStatus.textContent =
+      "❌ No se pudieron cargar los registros.";
+
+    registrosEntregadosStatus.textContent =
+      "❌ No se pudieron cargar los registros.";
+
+    return;
+  }
+
+  const { data: fichas, error: fichasError } =
+    await supabaseClient
+      .from("movimientos_fichas")
+      .select("referencia_id")
+      .eq("origen", "encargo");
+
+  if (fichasError) {
+    console.error("Error cargando fichas:", fichasError);
+
+    registrosPendientesStatus.textContent =
+      "❌ No se pudieron verificar las fichas.";
+
+    registrosEntregadosStatus.textContent =
+      "❌ No se pudieron verificar las fichas.";
+
+    return;
+  }
+
+  const encargosConFichas = new Set(
+    (fichas || []).map((movimiento) =>
+      String(movimiento.referencia_id || "")
+    )
+  );
+
+  const registros = (encargos || []).map((encargo) => ({
+    ...encargo,
+    tiene_fichas: encargosConFichas.has(String(encargo.id))
+  }));
+
+  registrosPendientesData = registros.filter((encargo) => {
+    const total = Number(encargo.total || 0);
+    const pagado = Number(encargo.amount_paid || 0);
+
+    const estaPagado = pagado >= total;
+    const tieneFichas = encargo.tiene_fichas;
+    const estaEntregado =
+      String(encargo.delivered_status || "pendiente") === "entregado";
+
+    return !(estaPagado && tieneFichas && estaEntregado);
+  });
+
+  registrosEntregadosData = registros.filter((encargo) => {
+    const total = Number(encargo.total || 0);
+    const pagado = Number(encargo.amount_paid || 0);
+
+    const estaPagado = pagado >= total;
+    const tieneFichas = encargo.tiene_fichas;
+    const estaEntregado =
+      String(encargo.delivered_status || "pendiente") === "entregado";
+
+    return estaPagado && tieneFichas && estaEntregado;
+  });
+
+  registrosPendientesPaginaActual = 0;
+  registrosEntregadosPaginaActual = 0;
+
+  renderRegistrosPendientes();
+  renderRegistrosEntregados();
+
+  registrosPendientesStatus.textContent =
+    `${registrosPendientesData.length} pendiente(s).`;
+
+  registrosEntregadosStatus.textContent =
+    `${registrosEntregadosData.length} entregado(s).`;
+}
+
+function mostrarRegistroDetalle(encargoId) {
+  const todosLosRegistros = [
+    ...registrosPendientesData,
+    ...registrosEntregadosData
+  ];
+
+  const encargo = todosLosRegistros.find(
+    (registro) =>
+      String(registro.id) === String(encargoId)
+  );
+
+  if (!encargo) return;
+
+  const total = Number(encargo.total || 0);
+  const pagado = Number(encargo.amount_paid || 0);
+  const porCobrar = Math.max(total - pagado, 0);
+
+  registroDetalleFecha.textContent =
+    formatDateTime(encargo.created_at);
+
+  registroDetalleCliente.textContent =
+    encargo.client_name || "-";
+
+  registroDetalleTelefono.textContent =
+    encargo.client_phone || "-";
+
+  registroDetalleTotal.textContent =
+    money(total);
+
+  registroDetallePagado.textContent =
+    money(pagado);
+
+  registroDetallePendiente.textContent =
+    money(porCobrar);
+
+  registroDetalleFichas.textContent =
+    encargo.tiene_fichas
+      ? "Registradas"
+      : "Sin registrar";
+
+  registroDetallePagoEstado.textContent =
+    humanPaymentStatus(encargo.payment_status);
+
+    registroDetallePedidoEstado.textContent =
+    humanDeliveredStatus(encargo.delivered_status);
+  
+  const servicios = buildEncargoServicesRows(encargo);
+  
+  registroDetalleServiciosBody.innerHTML = "";
+  
+  if (!servicios.length) {
+    registroDetalleServiciosBody.innerHTML = `
+      <tr>
+        <td colspan="4">No hay servicios registrados.</td>
+      </tr>
+    `;
+  } else {
+    for (const item of servicios) {
+      const tr = document.createElement("tr");
+  
+      tr.innerHTML = `
+        <td>${item.name}</td>
+        <td>${item.qty}</td>
+        <td>${money(item.price)}</td>
+        <td>${money(item.subtotal)}</td>
+      `;
+  
+      registroDetalleServiciosBody.appendChild(tr);
+    }
+  }
+
+  const usos = buildEncargoUsageRows(encargo);
+
+registroDetalleUsoBody.innerHTML = "";
+
+if (!usos.length) {
+  registroDetalleUsoBody.innerHTML = `
+    <tr>
+      <td colspan="2">
+        Aún no hay uso registrado para este encargo.
+      </td>
+    </tr>
+  `;
+} else {
+  for (const item of usos) {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${item.name}</td>
+      <td>${item.qty}</td>
+    `;
+
+    registroDetalleUsoBody.appendChild(tr);
+  }
+}
+  
+  registroDetallePanel.style.display = "block";
+}
+
 const repartoCortesBody = $("#repartoCortesBody");
 const repartoCortesStatus = $("#repartoCortesStatus");
+
+const repartoCortesPaginacion = $("#repartoCortesPaginacion");
+const repartoAnteriorBtn = $("#repartoAnteriorBtn");
+const repartoSiguienteBtn = $("#repartoSiguienteBtn");
+const repartoPaginaInfo = $("#repartoPaginaInfo");
 
 const repartoEfectivo = $("#repartoEfectivo");
 const repartoTransferencias = $("#repartoTransferencias");
@@ -1013,6 +1435,10 @@ const detalleRepartoGastosBody = $("#detalleRepartoGastosBody");
 let cortesDisponiblesReparto = [];
 let cortesSeleccionadosReparto = [];
 let gastosReparto = [];
+
+let repartoPaginaActual = 0;
+const repartoTamanoPagina = 10;
+const repartoCortesMarcados = new Set();
 
 const openCorteTurnoBtn = $("#openCorteTurnoBtn");
 const consultaCorteTurno = $("#consultaCorteTurno");
@@ -1061,6 +1487,9 @@ const detalleFichasTotal = $("#detalleFichasTotal");
 let ultimoCorteGenerado = null;
 let ultimoCorteImprimible = null;
 let corteDetalleImprimible = null;
+
+let ultimoTotalAutoServicioCorte = 0;
+let ultimoTotalEncargosCorte = 0;
 
 function mapaFichasATexto(mapa = {}) {
   const orden = [
@@ -1117,7 +1546,7 @@ function mapaFichasATexto(mapa = {}) {
     .join("\n");
 }
 
-function imprimirTicketCorte(corte) {
+async function imprimirTicketCorte(corte) {
   if (!corte) return;
 
   const ventana = window.open("", "_blank", "width=320,height=700");
@@ -1125,6 +1554,57 @@ function imprimirTicketCorte(corte) {
   if (!ventana) {
     alert("No se pudo abrir la ventana de impresión.");
     return;
+  }
+
+  let totalAutoServicioTicket =
+    Number(corte.total_auto_servicio || 0);
+
+  let totalEncargosTicket =
+    Number(corte.total_encargos || 0);
+
+  // Si es un corte antiguo y no tiene el desglose guardado,
+  // reconstruimos los totales con los movimientos reales.
+  if (
+    Number(corte.total_cobrado || 0) > 0 &&
+    totalAutoServicioTicket === 0 &&
+    totalEncargosTicket === 0
+  ) {
+    const {
+      data: movimientosTicket,
+      error: movimientosTicketError
+    } = await supabaseClient
+      .from("movimientos_caja")
+      .select("origen, monto")
+      .eq("employee", corte.employee)
+      .gte("created_at", corte.inicio)
+      .lt("created_at", corte.fin)
+      .in("origen", [
+        "auto_servicio",
+        "encargo",
+        "abono_encargo"
+      ]);
+
+    if (!movimientosTicketError) {
+      for (const movimiento of movimientosTicket || []) {
+        const monto = Number(movimiento.monto || 0);
+
+        if (movimiento.origen === "auto_servicio") {
+          totalAutoServicioTicket += monto;
+        }
+
+        if (
+          movimiento.origen === "encargo" ||
+          movimiento.origen === "abono_encargo"
+        ) {
+          totalEncargosTicket += monto;
+        }
+      }
+    } else {
+      console.error(
+        "Error reconstruyendo desglose del corte:",
+        movimientosTicketError
+      );
+    }
   }
 
   const inicio = new Date(corte.inicio).toLocaleString("es-MX");
@@ -1139,18 +1619,19 @@ function imprimirTicketCorte(corte) {
       <style>
         @page {
           size: 58mm auto;
-          margin: 2mm;
-        }
-
-        body {
-          width: 54mm;
           margin: 0;
-          padding: 0;
-          font-family: monospace;
-          font-size: 11px;
-          line-height: 1.3;
-          text-align: left;
-        }
+         }
+
+         body {
+           width: 50mm;
+           margin: 0;
+           padding: 1mm;
+           font-family: monospace;
+           font-size: 9px;
+           line-height: 1.15;
+           text-align: left;
+           overflow-wrap: anywhere;
+          }
 
         .center {
           text-align: center;
@@ -1158,12 +1639,12 @@ function imprimirTicketCorte(corte) {
 
         .line {
           border-top: 1px dashed #000;
-          margin: 6px 0;
+          margin: 4px 0;
         }
 
         .titulo {
           font-weight: bold;
-          font-size: 13px;
+          font-size: 11px;
         }
 
         .dato {
@@ -1193,9 +1674,31 @@ function imprimirTicketCorte(corte) {
 
       <div class="line"></div>
 
-      <div class="dato">Efectivo: ${money(corte.efectivo || 0)}</div>
-      <div class="dato">Transferencias: ${money(corte.transferencias || 0)}</div>
-      <div class="dato"><strong>Total: ${money(corte.total_cobrado || 0)}</strong></div>
+      <div class="dato">
+  Auto servicio: ${money(totalAutoServicioTicket)}
+</div>
+
+<div class="dato">
+  Encargos: ${money(totalEncargosTicket)}
+</div>
+
+<div class="line"></div>
+
+<div class="dato">
+  Efectivo: ${money(corte.efectivo || 0)}
+</div>
+
+<div class="dato">
+  Transferencias: ${money(corte.transferencias || 0)}
+</div>
+
+<div class="line"></div>
+
+<div class="dato">
+  <strong>
+    Total general: ${money(corte.total_cobrado || 0)}
+  </strong>
+</div>
 
       <div class="line"></div>
 
@@ -1231,6 +1734,14 @@ function imprimirTicketCorte(corte) {
 }
 
 imprimirCorteBtn.addEventListener("click", () => {
+  if (!ultimoCorteImprimible) return;
+
+  ultimoCorteImprimible.total_auto_servicio =
+    ultimoTotalAutoServicioCorte;
+
+  ultimoCorteImprimible.total_encargos =
+    ultimoTotalEncargosCorte;
+
   imprimirTicketCorte(ultimoCorteImprimible);
 });
 
@@ -1253,6 +1764,9 @@ function mostrarConsulta(tipo) {
 
   consultaGastosReparto.style.display =
     tipo === "gastos" ? "" : "none";
+
+  consultaRegistros.style.display =
+    tipo === "registros" ? "" : "none";
 
   btnConsultaAutoServicio.classList.toggle(
     "active",
@@ -1278,6 +1792,11 @@ function mostrarConsulta(tipo) {
     "active",
     tipo === "gastos"
   );
+
+  btnRegistros.classList.toggle(
+    "active",
+    tipo === "registros"
+  );
 }
 
 btnConsultaAutoServicio.addEventListener("click", () => {
@@ -1299,6 +1818,103 @@ openCorteTurnoBtn.addEventListener("click", () => {
 btnGastosReparto.addEventListener("click", () => {
   mostrarConsulta("gastos");
   cargarCortesDisponiblesReparto();
+});
+
+btnRegistros.addEventListener("click", async () => {
+  mostrarConsulta("registros");
+  await cargarRegistrosEncargos();
+});
+
+btnRegistrosPendientes.addEventListener("click", () => {
+  registrosPendientes.style.display = "";
+  registrosEntregados.style.display = "none";
+  registroDetallePanel.style.display = "none";
+
+  btnRegistrosPendientes.classList.add("active");
+  btnRegistrosEntregados.classList.remove("active");
+});
+
+btnRegistrosEntregados.addEventListener("click", () => {
+  registrosPendientes.style.display = "none";
+  registroDetallePanel.style.display = "none";
+  registrosEntregados.style.display = "";
+
+  btnRegistrosPendientes.classList.remove("active");
+  btnRegistrosEntregados.classList.add("active");
+});
+
+registrosPendientesAnteriorBtn.addEventListener("click", () => {
+  if (registrosPendientesPaginaActual <= 0) return;
+
+  registrosPendientesPaginaActual--;
+  renderRegistrosPendientes();
+});
+
+registrosPendientesSiguienteBtn.addEventListener("click", () => {
+  const totalPaginas = Math.ceil(
+    registrosPendientesData.length / registrosTamanoPagina
+  );
+
+  if (
+    registrosPendientesPaginaActual >=
+    totalPaginas - 1
+  ) {
+    return;
+  }
+
+  registrosPendientesPaginaActual++;
+  renderRegistrosPendientes();
+});
+
+registrosEntregadosAnteriorBtn.addEventListener("click", () => {
+  if (registrosEntregadosPaginaActual <= 0) return;
+
+  registrosEntregadosPaginaActual--;
+  renderRegistrosEntregados();
+});
+
+registrosEntregadosSiguienteBtn.addEventListener("click", () => {
+  const totalPaginas = Math.ceil(
+    registrosEntregadosData.length / registrosTamanoPagina
+  );
+
+  if (
+    registrosEntregadosPaginaActual >=
+    totalPaginas - 1
+  ) {
+    return;
+  }
+
+  registrosEntregadosPaginaActual++;
+  renderRegistrosEntregados();
+});
+
+registrosPendientesBody.addEventListener("click", (e) => {
+  const btn = e.target.closest(
+    "[data-registro-encargo]"
+  );
+
+  if (!btn) return;
+
+  mostrarRegistroDetalle(
+    btn.dataset.registroEncargo
+  );
+});
+
+registrosEntregadosBody.addEventListener("click", (e) => {
+  const btn = e.target.closest(
+    "[data-registro-encargo]"
+  );
+
+  if (!btn) return;
+
+  mostrarRegistroDetalle(
+    btn.dataset.registroEncargo
+  );
+});
+
+cerrarRegistroDetalleBtn.addEventListener("click", () => {
+  registroDetallePanel.style.display = "none";
 });
 
 async function generarCorteTurno() {
@@ -1364,21 +1980,40 @@ async function generarCorteTurno() {
   }
 
   let efectivo = 0;
-  let transferencias = 0;
+let transferencias = 0;
 
-  for (const movimiento of data || []) {
-    const monto = Number(movimiento.monto || 0);
+let totalAutoServicio = 0;
+let totalEncargos = 0;
 
-    if (movimiento.metodo_pago === "efectivo") {
-      efectivo += monto;
-    }
+for (const movimiento of data || []) {
+  const monto = Number(movimiento.monto || 0);
 
-    if (movimiento.metodo_pago === "transferencia") {
-      transferencias += monto;
-    }
+  // Forma de pago
+  if (movimiento.metodo_pago === "efectivo") {
+    efectivo += monto;
   }
 
-  const totalCobrado = efectivo + transferencias;
+  if (movimiento.metodo_pago === "transferencia") {
+    transferencias += monto;
+  }
+
+  // Origen del ingreso
+  if (movimiento.origen === "auto_servicio") {
+    totalAutoServicio += monto;
+  }
+
+  if (
+    movimiento.origen === "encargo" ||
+    movimiento.origen === "abono_encargo"
+  ) {
+    totalEncargos += monto;
+  }
+}
+
+const totalCobrado = efectivo + transferencias;
+
+ultimoTotalAutoServicioCorte = totalAutoServicio;
+ultimoTotalEncargosCorte = totalEncargos;
 
   corteStatus.textContent = "Generando corte... consultando fichas";
 
@@ -1487,12 +2122,20 @@ corteStatus.innerHTML = `
     <strong>Fin:</strong>
     ${fechaFin} ${horaFin}
   </div>
+ 
+  <hr class="sep" />
+
+  <div><strong>Total Auto servicio:</strong> ${money(totalAutoServicio)}</div>
+  <div><strong>Total Encargos:</strong> ${money(totalEncargos)}</div>
 
   <hr class="sep" />
 
   <div><strong>Efectivo:</strong> ${money(efectivo)}</div>
   <div><strong>Transferencias:</strong> ${money(transferencias)}</div>
-  <div><strong>Total cobrado:</strong> ${money(totalCobrado)}</div>
+
+  <hr class="sep" />
+
+  <div><strong>Total general:</strong> ${money(totalCobrado)}</div>
 
   <hr class="sep" />
 
@@ -1588,7 +2231,9 @@ guardarCorteBtn.addEventListener("click", async () => {
 // Guardar una copia del corte ya cerrado para poder imprimirlo
 ultimoCorteImprimible = {
   ...ultimoCorteGenerado,
-  id: data.id
+  id: data.id,
+  total_auto_servicio: ultimoTotalAutoServicioCorte,
+  total_encargos: ultimoTotalEncargosCorte
 };
 
 // Activar botón de impresión
@@ -1769,8 +2414,38 @@ async function cargarCortesDisponiblesReparto() {
     return;
   }
 
-  // 4. Mostrar los cortes disponibles
-  repartoCortesBody.innerHTML = cortesDisponiblesReparto
+// 4. Mostrar los cortes disponibles paginados
+repartoPaginaActual = 0;
+repartoCortesMarcados.clear();
+
+renderCortesDisponiblesReparto();
+
+repartoCortesStatus.textContent =
+  `${cortesDisponiblesReparto.length} corte(s) disponible(s).`;
+}
+
+function renderCortesDisponiblesReparto() {
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(
+      cortesDisponiblesReparto.length / repartoTamanoPagina
+    )
+  );
+
+  if (repartoPaginaActual >= totalPaginas) {
+    repartoPaginaActual = totalPaginas - 1;
+  }
+
+  const inicio =
+    repartoPaginaActual * repartoTamanoPagina;
+
+  const fin =
+    inicio + repartoTamanoPagina;
+
+  const cortesPagina =
+    cortesDisponiblesReparto.slice(inicio, fin);
+
+  repartoCortesBody.innerHTML = cortesPagina
     .map(
       (corte) => `
         <tr>
@@ -1779,6 +2454,11 @@ async function cargarCortesDisponiblesReparto() {
               type="checkbox"
               class="repartoCorteCheck"
               data-corte-id="${corte.id}"
+              ${
+                repartoCortesMarcados.has(String(corte.id))
+                  ? "checked"
+                  : ""
+              }
             />
           </td>
 
@@ -1792,32 +2472,44 @@ async function cargarCortesDisponiblesReparto() {
 
           <td>${money(Number(corte.transferencias || 0))}</td>
 
-          <td><strong>${money(Number(corte.total_cobrado || 0))}</strong></td>
+          <td>
+            <strong>
+              ${money(Number(corte.total_cobrado || 0))}
+            </strong>
+          </td>
         </tr>
       `
     )
     .join("");
 
-  repartoCortesStatus.textContent =
-    `${cortesDisponiblesReparto.length} corte(s) disponible(s).`;
+  if (repartoPaginaInfo) {
+    repartoPaginaInfo.textContent =
+      `Página ${repartoPaginaActual + 1} de ${totalPaginas}`;
+  }
+
+  if (repartoAnteriorBtn) {
+    repartoAnteriorBtn.disabled =
+      repartoPaginaActual === 0;
+  }
+
+  if (repartoSiguienteBtn) {
+    repartoSiguienteBtn.disabled =
+      repartoPaginaActual >= totalPaginas - 1;
+  }
+
+  if (repartoCortesPaginacion) {
+    repartoCortesPaginacion.style.display =
+      cortesDisponiblesReparto.length > repartoTamanoPagina
+        ? "flex"
+        : "none";
+  }
 }
 
 function actualizarTotalesReparto() {
-  cortesSeleccionadosReparto = [];
-
-  const checks = document.querySelectorAll(".repartoCorteCheck:checked");
-
-  for (const check of checks) {
-    const corteId = String(check.dataset.corteId);
-
-    const corte = cortesDisponiblesReparto.find(
-      (item) => String(item.id) === corteId
-    );
-
-    if (corte) {
-      cortesSeleccionadosReparto.push(corte);
-    }
-  }
+  cortesSeleccionadosReparto =
+  cortesDisponiblesReparto.filter((corte) =>
+    repartoCortesMarcados.has(String(corte.id))
+  );
 
   const totalEfectivo = cortesSeleccionadosReparto.reduce(
     (suma, corte) =>
@@ -2348,7 +3040,37 @@ if (repartoCortesBody) {
   repartoCortesBody.addEventListener("change", (e) => {
     if (!e.target.classList.contains("repartoCorteCheck")) return;
 
+    const corteId = String(e.target.dataset.corteId);
+
+    if (e.target.checked) {
+      repartoCortesMarcados.add(corteId);
+    } else {
+      repartoCortesMarcados.delete(corteId);
+    }
+
     actualizarTotalesReparto();
+  });
+}
+
+if (repartoAnteriorBtn) {
+  repartoAnteriorBtn.addEventListener("click", () => {
+    if (repartoPaginaActual <= 0) return;
+
+    repartoPaginaActual--;
+    renderCortesDisponiblesReparto();
+  });
+}
+
+if (repartoSiguienteBtn) {
+  repartoSiguienteBtn.addEventListener("click", () => {
+    const totalPaginas = Math.ceil(
+      cortesDisponiblesReparto.length / repartoTamanoPagina
+    );
+
+    if (repartoPaginaActual >= totalPaginas - 1) return;
+
+    repartoPaginaActual++;
+    renderCortesDisponiblesReparto();
   });
 }
 
@@ -3798,12 +4520,16 @@ async function guardarFichasEncargo() {
   };
 
   encargoDetailStatus.textContent =
-    "✅ Fichas guardadas correctamente.";
+  "✅ Fichas guardadas correctamente.";
 
   guardarFichasEncargoBtn.disabled = false;
 
   await openEncargoDetail(currentEncargoId);
-}
+
+  if (buscarEncargoPago?.value?.trim()) {
+  await loadEncargosPago();
+  }
+  }
 
 async function guardarPagoEntregaEncargo() {
   ensureSupabase();
@@ -4820,11 +5546,11 @@ async function loadEncargosPago() {
     const cliente = String(encargo.client_name || "")
       .trim()
       .toLowerCase();
-
+  
     const telefono = String(encargo.client_phone || "")
       .trim()
       .toLowerCase();
-
+  
     return (
       cliente.startsWith(busqueda) ||
       telefono.startsWith(busqueda)
@@ -4888,6 +5614,20 @@ async function loadEncargosPago() {
       (movimiento) =>
         String(movimiento.referencia_id || "") === String(encargo.id)
     );
+
+    const estaPagado =
+      Number(encargo.amount_paid || 0) >= Number(encargo.total || 0);
+
+    const estaEntregado =
+      String(encargo.delivered_status || "pendiente") === "entregado";
+
+    const tieneFichas = fichasDelEncargo.length > 0;
+
+    // Solo ocultar cuando ya está completamente terminado:
+    // pagado + fichas registradas + entregado
+    if (estaPagado && tieneFichas && estaEntregado) {
+      return;
+     }
     
     const pagosDelEncargo = (fechasPagos || []).filter(
       (movimiento) =>
@@ -4925,6 +5665,7 @@ async function loadEncargosPago() {
   <td>${money(pagado)}</td>
   <td>${money(porCobrar)}</td>
   <td>${encargo.payment_status || ""}</td>
+  <td>${humanDeliveredStatus(encargo.delivered_status)}</td>
 
   <td>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -5213,31 +5954,43 @@ async function loadViewEncargos() {
   if (viewEncargosSummary) viewEncargosSummary.style.display = "none";
   if (viewEncargoDetailPanel) viewEncargoDetailPanel.style.display = "none";
 
-  let q = supabaseClient
-    .from("encargos")
-    .select(`
-      id,
-      created_at,
-      employee,
-      client_name,
-      client_phone,
-      kilos,
-      payment_status,
-      amount_paid,
-      total,
-      change,
-      amount_due,
-      delivered_status
-    `)
-    .order("created_at", { ascending: false });
+  const fechaDesde = viewEncargoFromDate?.value || "";
+const fechaHasta = viewEncargoToDate?.value || "";
 
-  if (viewEncargoFromDate && viewEncargoFromDate.value) {
-    q = q.gte("created_at", localDateStartISO(viewEncargoFromDate.value));
-  }
+if (!fechaDesde || !fechaHasta) {
+  viewEncargosStatus.textContent =
+    "Selecciona la fecha Desde y Hasta.";
+  return;
+}
 
-  if (viewEncargoToDate && viewEncargoToDate.value) {
-    q = q.lte("created_at", localDateEndISO(viewEncargoToDate.value));
-  }
+if (fechaDesde > fechaHasta) {
+  viewEncargosStatus.textContent =
+    "La fecha Desde no puede ser mayor que la fecha Hasta.";
+  return;
+}
+
+const inicioPeriodo = localDateStartISO(fechaDesde);
+const finPeriodo = localDateEndISO(fechaHasta);
+
+let q = supabaseClient
+  .from("encargos")
+  .select(`
+    id,
+    created_at,
+    employee,
+    client_name,
+    client_phone,
+    kilos,
+    payment_status,
+    amount_paid,
+    total,
+    change,
+    amount_due,
+    delivered_status
+  `)
+  .gte("created_at", inicioPeriodo)
+  .lte("created_at", finPeriodo)
+  .order("created_at", { ascending: false });
 
   const { data, error } = await q;
 
@@ -6603,7 +7356,6 @@ if (articulosError) {
 
   win.document.close();
 }
-
 
 
 
