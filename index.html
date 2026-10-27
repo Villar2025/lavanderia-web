@@ -287,6 +287,255 @@
           >
             Gastos y reparto
           </button>
+
+          <button
+          type="button"
+          id="btnRegistros"
+          class="tabBtn"
+          >
+            Registros
+          </button>
+            </div>
+            <div id="consultaRegistros" style="display:none;">
+
+              <hr class="sep" />
+            
+              <h2>Registros</h2>
+            
+              <div class="tabs" style="margin-bottom:18px;">
+                <button
+                  type="button"
+                  id="btnRegistrosPendientes"
+                  class="tabBtn active"
+                >
+                  Pendientes
+                </button>
+            
+                <button
+                  type="button"
+                  id="btnRegistrosEntregados"
+                  class="tabBtn"
+                >
+                  Entregados
+                </button>
+              </div>
+
+              <div id="registrosPendientes">
+                <h3>Pendientes</h3>
+              
+                <div class="tableWrap" style="margin-top:12px;">
+                  <table class="table tablaRegistros" aria-label="Registros pendientes">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Total</th>
+                        <th>Pagado</th>
+                        <th>Por cobrar</th>
+                        <th>Fichas</th>
+                        <th>Pedido</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+              
+                    <tbody id="registrosPendientesBody"></tbody>
+                  </table>
+                </div>
+
+                <div
+                id="registrosPendientesPaginacion"
+                style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:12px;"
+              >
+                <button
+                  type="button"
+                  id="registrosPendientesAnteriorBtn"
+                  class="ghost"
+                  style="width:auto;"
+                  disabled
+                >
+                  ← Anterior
+                </button>
+              
+                <span id="registrosPendientesPaginaInfo" class="muted">
+                  Página 1
+                </span>
+              
+                <button
+                  type="button"
+                  id="registrosPendientesSiguienteBtn"
+                  class="ghost"
+                  style="width:auto;"
+                  disabled
+                >
+                  Siguiente →
+                </button>
+              </div>
+
+                <p id="registrosPendientesStatus" class="status"></p>
+              </div>
+              
+              <div id="registrosEntregados" style="display:none;">
+                <h3>Entregados</h3>
+              
+                <div class="tableWrap" style="margin-top:12px;">
+                  <table class="table tablaRegistros" aria-label="Registros entregados">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Total</th>
+                        <th>Pagado</th>
+                        <th>Por cobrar</th>
+                        <th>Fichas</th>
+                        <th>Pedido</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+              
+                    <tbody id="registrosEntregadosBody"></tbody>
+                  </table>
+                </div>
+
+                <div
+                id="registrosEntregadosPaginacion"
+                style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:12px;"
+              >
+                <button
+                  type="button"
+                  id="registrosEntregadosAnteriorBtn"
+                  class="ghost"
+                  style="width:auto;"
+                  disabled
+                >
+                  ← Anterior
+                </button>
+              
+                <span id="registrosEntregadosPaginaInfo" class="muted">
+                  Página 1
+                </span>
+              
+                <button
+                  type="button"
+                  id="registrosEntregadosSiguienteBtn"
+                  class="ghost"
+                  style="width:auto;"
+                  disabled
+                >
+                  Siguiente →
+                </button>
+              </div>
+              
+                <p id="registrosEntregadosStatus" class="status"></p>
+              </div>
+
+              <div
+              id="registroDetallePanel"
+              class="block"
+              style="display:none; margin-top:18px;"
+            >
+              <div
+                style="display:flex; justify-content:space-between; align-items:center; gap:10px;"
+              >
+                <h3 style="margin:0;">Detalle del encargo</h3>
+            
+                <button
+                  type="button"
+                  id="cerrarRegistroDetalleBtn"
+                  class="ghost"
+                  style="width:auto;"
+                >
+                  Cerrar
+                </button>
+              </div>
+            
+              <div class="grid" style="margin-top:12px;">
+                <div class="pill">
+                  <strong>Fecha:</strong>
+                  <span id="registroDetalleFecha">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Cliente:</strong>
+                  <span id="registroDetalleCliente">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Teléfono:</strong>
+                  <span id="registroDetalleTelefono">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Total:</strong>
+                  <span id="registroDetalleTotal">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Pagado:</strong>
+                  <span id="registroDetallePagado">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Por cobrar:</strong>
+                  <span id="registroDetallePendiente">$0</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Fichas:</strong>
+                  <span id="registroDetalleFichas">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Estado de pago:</strong>
+                  <span id="registroDetallePagoEstado">-</span>
+                </div>
+            
+                <div class="pill">
+                  <strong>Pedido:</strong>
+                  <span id="registroDetallePedidoEstado">-</span>
+                </div>
+              </div>
+              <h4 style="margin-top:18px;">Servicios del encargo</h4>
+
+              <div class="tableWrap" style="margin-top:10px;">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Servicio</th>
+                      <th>Cantidad</th>
+                      <th>Precio</th>
+                      <th>Subtotal</th>
+                    </tr>
+                  </thead>
+              
+                  <tbody id="registroDetalleServiciosBody">
+                    <tr>
+                      <td colspan="4">Sin información.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <h4 style="margin-top:18px;">Uso registrado</h4>
+
+              <div class="tableWrap" style="margin-top:10px;">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Servicio</th>
+                      <th>Cantidad</th>
+                    </tr>
+                  </thead>
+              
+                  <tbody id="registroDetalleUsoBody">
+                    <tr>
+                      <td colspan="2">Sin información.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             </div>
             <div id="consultaAutoServicio">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
@@ -1021,7 +1270,36 @@
                   <tbody id="repartoCortesBody"></tbody>
                 </table>
               </div>
-        
+              
+              <div
+                id="repartoCortesPaginacion"
+                style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:12px;"
+              >
+                <button
+                  type="button"
+                  id="repartoAnteriorBtn"
+                  class="ghost"
+                  style="width:auto;"
+                  disabled
+                >
+                  ← Anterior
+                </button>
+              
+                <span id="repartoPaginaInfo" class="muted">
+                  Página 1
+                </span>
+              
+                <button
+                  type="button"
+                  id="repartoSiguienteBtn"
+                  class="ghost"
+                  style="width:auto;"
+                  disabled
+                >
+                  Siguiente →
+                </button>
+              </div>
+              
               <p id="repartoCortesStatus" class="status"></p>
             </div>
         
@@ -1667,7 +1945,7 @@
               </div>
           
               <div class="tableWrap" style="margin-top:12px;">
-                <table class="table" aria-label="Encargos anteriores para pago">
+                <table class="table tablaEncargosPago" aria-label="Encargos anteriores para pago">
                   <thead>
                     <tr>
                       <th>Recibido</th>
@@ -1678,7 +1956,8 @@
                       <th>Total</th>
                       <th>Pagado</th>
                       <th>Por cobrar</th>
-                      <th>Estado</th>
+                      <th>Estado pago</th>
+                      <th>Pedido</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1928,6 +2207,7 @@
     <script src="js/script.js"></script>
   </body>
 </html>
+
 
 
 
